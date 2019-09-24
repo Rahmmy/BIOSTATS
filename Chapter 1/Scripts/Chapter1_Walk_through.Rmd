@@ -1,0 +1,84 @@
+---
+title: "Chapt1_walk through"
+author: "Abdul-Rahman"
+date: "21/09/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+#Libraries in this Chapter
+library(here)
+
+#Poisson distribution
+How often can 3 mutations could occur under a Poisson model with a rate parameter of 5
+
+Using X as the event (3) and lambda as the rate parameter (5)
+
+dpois(x = 3, lambda = 5) 
+
+What are the indiviadual probabilities of 0 to 12 mutations with a rate parameter of 5. Visalualize these probabilities with a barplot
+
+dpois(x = 0:12, lambda = 5)
+barplot(dpois(0:12, 5), names.arg = 0:12, col = "green",xlab = "Number of mutations", ylab = "Probability")
+
+Finding the frequencies of categories in a data (e.g bloodgroup)
+bloodgroup = c("AA","AO","BB","AO","OO","AO","AA","BO","BO",
+             "AO","BB","AO","BO","AB","OO","AB","BB","AO","AO")
+table(bloodgroup)
+
+Creating a factor that can be used by the level function in identifying discrete categories
+
+bloodgroupF = factor(bloodgroup)
+levels(bloodgroupF)
+
+#Bernoulli trials
+#Trail with equal probabilities
+The outcome of 15 Bernoulli trials with a probability of success equal to 0.5
+rbinom(15, prob = 0.5, size = 1)
+each trail is independent of the other hence the difference in the answers when run
+
+#Trail with unequal probabilities
+rbinom(12, prob = 2/3, size = 1)
+
+#Binomial random variable
+set.seed(235569515)
+rbinom(1, prob = 0.3, size = 15)
+
+#Probability mass distribution displayed in 2 decimal places
+probabilities = dbinom(0:15, prob = 0.3, size = 15)
+round(probabilities, 2)
+#Bar plot ofthe probabilities
+barplot(probabilities, names.arg = 0:15, col = "green", xlab="Number of trials", ylab = "Probability")
+
+
+#Trail question
+#What is the output of the formula for k=3, p=2/3,n=4?
+
+dbinom(3, size = 4, prob = 2/3)
+x = factorial(4)/factorial(1)/ factorial(3)* (2/3)^3*(1/3)
+
+
+
