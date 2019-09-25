@@ -1,0 +1,129 @@
+---
+title: "Chapt1_walk through"
+author: "Abdul-Rahman"
+date: "21/09/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Libraries in this Chapter
+```{r package}
+library(here)
+```
+
+#Poisson distribution
+How often can 3 mutations could occur under a Poisson model with a rate parameter of 5
+
+Using X as the event (3) and lambda as the rate parameter (5)
+
+```{r}
+dpois(x = 3, lambda = 5) 
+```
+
+What are the indiviadual probabilities of 0 to 12 mutations with a rate parameter of 5. Visalualize these probabilities with a barplot
+
+```{r}
+dpois(x = 0:12, lambda = 5)
+barplot(dpois(0:12, 5), names.arg = 0:12, col = "green",xlab = "Number of mutations", ylab = "Probability")
+```
+
+Finding the frequencies of categories in a data (e.g bloodgroup)
+```{r bloodgroup}
+bloodgroup = c("AA","AO","BB","AO","OO","AO","AA","BO","BO",
+             "AO","BB","AO","BO","AB","OO","AB","BB","AO","AO")
+
+table(bloodgroup)
+```
+
+Creating a factor that can be used by the level function in identifying discrete categories
+
+```{r}
+bloodgroupF = factor(bloodgroup)
+levels(bloodgroupF)
+```
+
+## Adding factors not captured in the 
+##Bernoulli trials
+#Trail with equal probabilities
+The outcome of 15 Bernoulli trials with a probability of success equal to 0.5
+```{r}
+rbinom(15, prob = 0.5, size = 1)
+```
+Each trail is independent of the other hence the difference in the answers when run
+
+#Trail with unequal probabilities
+```{r}
+rbinom(12, prob = 2/3, size = 1)
+```
+
+#Binomial random variable
+```{r}
+set.seed(235569515)
+rbinom(1, prob = 0.3, size = 15)
+```
+
+#Probability mass distribution displayed in 2 decimal places
+```{r}
+probabilities = dbinom(0:15, prob = 0.3, size = 15)
+round(probabilities, 2)
+```
+
+#Bar plot ofthe probabilities
+```{r}
+barplot(probabilities, names.arg = 0:15, col = "green", xlab="Number of trials", ylab = "Probability")
+```
+
+
+#Trail question
+What is the output of the formula for k=3, p=2/3,n=4?
+```{r}
+dbinom(3, size = 4, prob = 2/3)
+x = factorial(4)/factorial(1)/ factorial(3)* (2/3)^3*(1/3)
+```
+
+##Modelling (generative) epitope detection
+
+False positive rate for ELISA is 1%
+Tests protein in 100 independent positions
+
+
+Task: Verify by simulation that the sum of 50 independent Bernoulli variables with p=0.01 is – to good enough approximation– the same as a Poisson(0.5) random variable.
+
+```{r ELISA array results for 50 patients in the 100 positions}
+set.seed(235569515)
+sum(rbinom(50, prob = 0.01, size = 1))
+
+dpois(x = 50, lambda = 0.5)
+
+t.test(sum(rbinom(50, prob = 0.01, size = 1)),dpois(x = 50, lambda = 0.5))
+
+load(here("Book", "data", "e100.RData"))
+
+barplot(e100, ylim = c(0, 7), width = 0.7, xlim = c(-0.5, 100.5),
+        names.arg = seq(along = e100), col = "darkolivegreen")
+
+```
+
+
+This is  equivalent to 1−P(  X≤6); the so-called cumulative distribution function at 6. The ppois function can be used for this in two methods;
+
+
+```{r ppois Method 1}
+1 - ppois(6, 0.5)
+```
+
+```{r ppois Method 2}
+ppois(6, 0.5, lower.tail = FALSE)
+```
+
+In method two;
+If lower.tail = TRUE(default) then probabilities are P[X ≤ x], meaning probability of 6, 5, 4, 3, 2, 1, 0 people == proability of less than 7
+If lower.tail = FALSE then probabilities are  P(X > x) so P(X>6) meaning probability of 7,8,9,10,11, ..., n people from 7 to 100 == proability => 7
+
+
+
+
+
