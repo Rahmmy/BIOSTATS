@@ -1,36 +1,46 @@
 ---
 title: "Statistical Modeling"
-output: html_document
+output:
+  pdf_document:
+    includes:
+      in_header: header.tex
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(here)
+library("vcd")
 ```
+
 2.2 Statistics vrs Probability
 Probability deals with predicting the likelihood of future events, while statistics involves the analysis of the frequency of past events. 
 
 2.3 A simple example of statistical modeling
+Load and clean data from outleirs
 ```{r}
 load(here("Book", "data", "e100.RData"))
 e99 = e100[-which.max(e100)]
 ```
 
-## R Markdown
+Plot bar-chat since the data is dicrete
+```{r}
+barplot(table(e99), space = 0.8, col = "chartreuse4")
+```
+Goodness-of-fit : visual evaluation
+The rootogram (Cleveland 1988); which hangs the bars with the observed counts from the theoretical red points. 
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r rootogram}
+gf1 = goodfit( e99, "poisson")
+rootogram(gf1, xlab = "", rect_gp = gpar(fill = "chartreuse4"))
 ```
 
-## Including Plots
+Question 1
+calibrate a barplot from a known Poisson variable using rpois with λ = 0.05 to generate 100 Poisson distributed numbers and draw their rootogram.
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+simp = rpois(100, lambda = 0.05)
+gf2 = goodfit(simp, "poisson")
+rootogram(gf2, xlab = "")
 ```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
