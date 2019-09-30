@@ -14,7 +14,7 @@ library(here)
 library("vcd")
 ```
 
-2.2 Statistics vrs Probability
+##2.2 Statistics vrs Probability
 Probability deals with predicting the likelihood of future events, while statistics involves the analysis of the frequency of past events. 
 
 2.3 A simple example of statistical modeling
@@ -36,11 +36,144 @@ gf1 = goodfit( e99, "poisson")
 rootogram(gf1, xlab = "", rect_gp = gpar(fill = "chartreuse4"))
 ```
 
-Question 1
+#Question 1
 calibrate a barplot from a known Poisson variable using rpois with λ = 0.05 to generate 100 Poisson distributed numbers and draw their rootogram.
 
 ```{r}
 simp = rpois(100, lambda = 0.05)
 gf2 = goodfit(simp, "poisson")
 rootogram(gf2, xlab = "")
+```
+
+##Estimating the parameter of the Poisson distribution
+```{r}
+table(e100)
+```
+
+# If the mean λ of the Poisson distribution were 3;
+```{r}
+table(rpois(100, 3))
+```
+
+λ of 3 gives us too many 2s, 3s, and more similar to our data.
+
+```{r}
+table(rpois(100, 4))
+```
+
+```{r}
+table(rpois(100, 8))
+```
+
+```{r}
+table(rpois(100, 1))
+```
+
+```{r}
+table(rpois(100, 0.5))
+```
+
+```{r}
+table(rpois(100,0.01))
+```
+In conclusion: Higher values of λ yield very disparate distribution. Lower values (e.g 1, 0.5 but not so low) are better
+
+This trail and error can be dealt with by likelihood functions by calculating the probability of obtainig **exactly** our data given the Poisson distribution is a value **m**.
+
+```{r}
+prod(dpois(c(0, 1, 2, 7), lambda = 3) ^ (c(58, 34, 7, 1)))
+```
+```{r}
+prod(dpois(c(0, 1, 2, 7), lambda = 2) ^ (c(58, 34, 7, 1)))
+```
+
+```{r}
+prod(dpois(c(0, 1, 2, 7), lambda = 1) ^ (c(58, 34, 7, 1)))
+```
+
+```{r}
+prod(dpois(c(0, 1, 2, 7), lambda = 0.5) ^ (c(58, 34, 7, 1)))
+```
+
+```{r}
+prod(dpois(c(0, 1, 2, 7), lambda = 0.4) ^ (c(58, 34, 7, 1)))
+```
+
+```{r}
+prod(dpois(c(0, 1, 2, 7), lambda = 0.1) ^ (c(58, 34, 7, 1)))
+```
+So it is clear that the optimal value is around 0.4
+
+Conviniently, it is standard to take the logarithm; when the logarithm is at its max, so too should be the probability. 
+
+
+```{r loglikelihood function}
+loglikelihood  =  function(lambda, data = e100) {
+  sum(log(dpois(data, lambda)))
+}
+```
+
+##  compute the likelihood for a whole series of lambda values from 0.05 to 0.95 
+
+```{r}
+lambdas = seq(0.05, 0.95, length = 100)
+loglik = vapply(lambdas, loglikelihood, numeric(1))
+plot(lambdas, loglik, type = "l", col = "red", ylab = "", lwd = 2,
+     xlab = expression(lambda))
+m0 = mean(e100)
+abline(v = m0, col = "blue", lwd = 2)
+abline(h = loglikelihood(m0), col = "purple", lwd = 2)
+m0
+```
+
+The red curve is the log-likelihood function. The vertical line shows the value of `m` (the mean) and the horizontal line the log-likelihood of `m`. It looks like `m` maximizes the likelihood."
+
+
+Shortcut: the function goodfit.
+```{r}
+gf  =  goodfit(e100, "poisson")
+names(gf)
+gf$par
+gf$observed
+gf$count
+gf$fitted
+gf$type
+gf$method
+gf$df
+```
+
+## 2.4 Binomial distributions and maximum likelihood
+#Generate data
+```{r}
+cb  =  c(rep(0, 110), rep(1, 10))
+table(cb)
+```
+
+
+Compute and plot the likelihood for many possible ^p.
+```{r}
+probs  =  seq(0, 0.3, by = 0.005)
+likelihood = dbinom(sum(cb), prob = probs, size = length(cb))
+plot(probs, likelihood, pch = 16, xlab = "probability of success",
+       ylab = "likelihood", cex=0.6)
+probs[which.max(likelihood)]
+```
+
+0.085 is very close to 1/12
+
+
+
+##Likelihood for the binomial distribution
+The likelihood and the probability are the same mathematical function, only interpreted in different ways
+```{r}
+loglikelihood = function(theta, n = 300, k = 40) {
+  115 + k * log(theta) + (n - k) * log(1 - theta)
+}
+```
+
+Plot for the range of θ from 0 to 1
+```{r}
+thetas = seq(0, 1, by = 0.001)
+plot(thetas, loglikelihood(thetas), xlab = expression(theta),
+  ylab = expression(paste("log f(", theta, " | y)")),type = "l")
 ```
