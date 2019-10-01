@@ -12,6 +12,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 library(here)
 library("vcd")
+library("Biostrings")
 ```
 
 ##2.2 Statistics vrs Probability
@@ -177,3 +178,76 @@ thetas = seq(0, 1, by = 0.001)
 plot(thetas, loglikelihood(thetas), xlab = expression(theta),
   ylab = expression(paste("log f(", theta, " | y)")),type = "l")
 ```
+
+##Multinomial data
+#DNA count modeling: base pairs
+Nucleotide this presents a perfect set up for studing multinomial model.
+
+```{r}
+staph = readDNAStringSet((here("Book", "data", "staphsequence.ffn.txt")), "fasta")
+
+staph[1]
+staph[[1]]
+
+staph_nt_fq_count<-letterFrequency(staph[[1]], letters = "ACGT", OR = 0)
+```
+
+The nulceotide distribution of the first gene
+```{r}
+gene1length <- length(staph[[1]])
+divnt <- function(x){x / gene1length}
+nt_freq <- sapply(staph_nt_fq_count, divnt)
+nt_freq
+```
+
+```{r}
+letterFrq = vapply(staph, letterFrequency, FUN.VALUE = numeric(4),
+         letters = "ACGT", OR = 0)
+colnames(letterFrq) = paste0("gene", seq(along = staph))
+tab10 = letterFrq[, 1:10]
+computeProportions = function(x) { x/sum(x) }
+prop10 = apply(tab10, 2, computeProportions)
+round(prop10, digits = 2)
+p0 = rowMeans(prop10)
+p0
+```
+
+Compute the expected counts by taking the outer product of the vector of probabilities p0 with the sums of nucleotide counts from each of the 10 columns.
+
+```{r}
+cs = colSums(tab10)
+cs
+expectedtab10 = outer(p0, cs, FUN = "*")
+round(expectedtab10)
+
+expectedtab10 = outer(p0, cs, FUN = "*")
+round(expectedtab10)
+```
+
+Create a random table with the correct column sums using the rmultinom function. 
+```{r}
+randomtab10 = sapply(cs, function(s) { rmultinom(1, s, p0) } )
+all(colSums(randomtab10) == cs)
+```
+
+Plot the distribution
+
+```{r}
+stat = function(obsvd, exptd = 20 * pvec) {
+   sum((obsvd - exptd)^2 / exptd)
+}
+B = 1000
+simulstat = replicate(B, {
+  randomtab10 = sapply(cs, function(s) { rmultinom(1, s, p0) })
+  stat(randomtab10, expectedtab10)
+})
+S1 = stat(tab10, expectedtab10)
+sum(simulstat >= S1)
+
+hist(simulstat, col = "lavender", breaks = seq(0, 75, length.out=50))
+abline(v = S1, col = "red")
+abline(v = quantile(simulstat, probs = c(0.95, 0.99)),
+       col = c("darkgreen", "blue"), lty = 2)
+```
+
+## Chi-Squared Distribution
