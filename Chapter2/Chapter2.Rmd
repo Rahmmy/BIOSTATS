@@ -251,3 +251,35 @@ abline(v = quantile(simulstat, probs = c(0.95, 0.99)),
 ```
 
 ## Chi-Squared Distribution
+So what we previously did wasn't entirely pointless... but it was a long way around just using a test statistic.
+ 
+Chi-squared distribution is the theoretical distribution of the simulstat statistic.
+
+The parameter is 30 (10 x (4-1)). There are 10 genes and 4-1 degrees of freedom.
+
+The theory and simulation can be compared using the visual goodness-of-fit tool the *(QQ) plot* or *quantile-quantile plot*. 
+
+### Question 
+
+Compare the simulstat values and 1000 randomly generated chi-squared(thirty) random numbers by displaying them in histograms with 50 bins each.
+
+```{r}
+qs = ppoints(100)
+quantile(simulstat, qs)
+quantile(qchisq(qs, df = 30), qs)
+```
+
+Plot
+
+```{r}
+qqplot(qchisq(ppoints(B), df = 30), simulstat, main = "",
+  xlab = expression(chi[nu==30]^2), asp = 1, cex = 0.5, pch = 16)
+abline(a = 0, b = 1, col = "red")
+```
+
+This offeres confidence and hence the chisquare can be employed for determining p
+
+```{r}
+1 - pchisq(S1, df = 30)
+```
+## Chargaff's Rule
