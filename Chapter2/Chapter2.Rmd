@@ -283,3 +283,414 @@ This offeres confidence and hence the chisquare can be employed for determining 
 1 - pchisq(S1, df = 30)
 ```
 ## Chargaff's Rule
+```{r}
+load(here("Book", "data", "ChargaffTable.RData"))
+
+ChargaffTable
+
+mycolors = c("chocolate", "aquamarine4", "cadetblue4", "coral3",
+            "chartreuse4","darkgoldenrod4","darkcyan","brown4")
+par(mfrow=c(2, 4), mai = c(0, 0.7, 0.7, 0))
+for (i in 1:8) {
+  cbp = barplot(ChargaffTable[i, ], horiz = TRUE, axes = FALSE, axisnames = FALSE, col = mycolors[i])
+  ax = axis(3, las = 2, labels = FALSE, col = mycolors[i], cex = 0.5, at = c(0, 10, 20))
+  mtext(side = 3, at = ax,  text = paste(ax), col = mycolors[i], line = 0, las = 1, cex = 0.9)
+  mtext(side = 2, at = cbp, text = colnames(ChargaffTable), col = mycolors[i], line = 0, las = 2, cex = 1)
+  title(paste(rownames(ChargaffTable)[i]), col = mycolors[i], cex = 1.1)
+}
+```
+
+#Insigths into Chargaff's Rule
+
+```{r}
+statChf = function(x){
+  sum((x[, "C"] - x[, "G"])^2 + (x[, "A"] - x[, "T"])^2)
+}
+chfstat = statChf(ChargaffTable)
+permstat = replicate(100000, {
+     permuted = t(apply(ChargaffTable, 1, sample))
+     colnames(permuted) = colnames(ChargaffTable)
+     statChf(permuted)
+})
+pChf = mean(permstat <= chfstat)
+pChf
+hist(permstat, breaks = 100, main = "", col = "lavender")
+abline(v = chfstat, lwd = 2, col = "red")
+```
+
+###Two categorical variables
+
+```{r}
+HairEyeColor[,, "Female"]
+```
+
+
+Features of the HairEyeColor Object
+```{r}
+str(HairEyeColor)
+? HairEyeColor
+```
+
+Color blindness and sex
+```{r}
+load(here("Book", "data", "Deuteranopia.RData"))
+Deuteranopia
+```
+Test whether there is a relationship between sex and the occurrence of color blindness
+
+```{r}
+chisq.test(Deuteranopia)
+```
+The fractions of deuteranopic color blind among women and men were the same.
+
+##Hardy-Weinberg equilibrium
+Recall: p + q = 1 (allele frequencies A or a) in a Hardy-Weinberg equilibrium, the total probability of the three genotypes is given as
+p^2 + 2pq + q^2 = 1 (genotype frequencies AA Aa aA or aa).
+
+```{r}
+library("HardyWeinberg")
+data("Mourant")
+Mourant[214:216,]
+```
+
+To plot the log-likelihood
+
+```{r}
+nMM = Mourant$MM[216]
+nMN = Mourant$MN[216]
+nNN = Mourant$NN[216]
+loglik = function(p, q = 1 - p) {
+  2 * nMM * log(p) + nMN * log(2*p*q) + 2 * nNN * log(q)
+}
+xv = seq(0.01, 0.99, by = 0.01)
+yv = loglik(xv)
+plot(x = xv, y = yv, type = "l", lwd = 2,
+     xlab = "p", ylab = "log-likelihood")
+imax = which.max(yv)
+abline(v = xv[imax], h = yv[imax], lwd = 1.5, col = "blue")
+abline(h = yv[imax], lwd = 1.5, col = "purple")
+```
+
+We can compute the genotype frequencies using the af function from the HardyWeinberg package.
+
+```{r}
+phat  =  af(c(nMM, nMN, nNN))
+phat
+```
+
+```{r}
+pMM   =  phat^2
+pMM
+qhat  =  1 - phat
+qhat
+```
+
+```{r}
+pHW = c(MM = phat^2, MN = 2*phat*qhat, NN = qhat^2)
+sum(c(nMM, nMN, nNN)) * pHW
+```
+
+A visual evaluation of the goodness-of-fit of Hardy-Weinberg can be called using HWTernaryPlot.
+
+```{r}
+pops = c(1, 69, 128, 148, 192)
+genotypeFrequencies = as.matrix(Mourant[, c("MM", "MN", "NN")])
+HWTernaryPlot(genotypeFrequencies[pops, ],
+        markerlab = Mourant$Country[pops],
+        alpha = 0.0001, curvecols = c("red", rep("purple", 4)),
+        mcex = 0.75, vertex.cex = 1)
+HWTernaryPlot(genotypeFrequencies[-pops, ], alpha = 0.0001,
+   newframe = FALSE, cex = 0.5)
+```
+
+How to read: the Hardy-Weinberg model is the red curve, the acceptance region is between the two purple lines.
+
+##New plot plus other data points
+
+
+```{r}
+newgf = round(genotypeFrequencies / 50)
+HWTernaryPlot(newgf[pops, ],
+        markerlab = Mourant$Country[pops],
+        alpha = 0.0001, curvecols = c("red", rep("purple", 4)),
+        mcex = 0.75, vertex.cex = 1)
+```
+
+
+##Sequence Motifs
+The position weight matrix (PWM) or position-specific scoring matrix (PSSM), of the Kozak motif by looking at the sequence logo graphic.
+
+
+```{r}
+library("seqLogo")
+load(here("Book", "data", "kozak.RData"))
+kozak
+pwm = makePWM(kozak)
+seqLogo(pwm, ic.scale = FALSE)
+```
+
+## Markov Chains and Bayesian Thinking
+
+Bayesian statistics stresses the relevance of  *prior knowledge* in probability estimations.
+The Bayesian paradigm is a practical approach where prior and posterior distributions are used as models of our knowledge before and after collecting some data and making an observation
+If our prior is P(x) and we have some other data d,then posterior would be P(x | d) and their relationship can be described by the following:
+
+P(x | d) = P(d | x) x P(x) / P(d)
+
+
+### Haplotypes
+A haplotype is a collection of physically close alleles that are often inhereted together (are genetically linked)
+
+```{r}
+haplo6=read.table(here("Book", "data", "haplotype6.txt"),header = TRUE)
+haplo6
+```
+Find the underlying proportion θ of the haplotype of interest in the population of interest. 
+Consider the occurrence of a haplotype as a `success’ in a binomial distribution using collected observations.
+
+``{r}
+
+```{r}
+library("markovchain")
+library("igraph")
+sequence = toupper(c("a", "c", "a", "c", "g", "t", "t", "t", "t", "c",
+"c", "a", "c", "g", "t", "a", "c","c","c","a","a","a","t","a",
+"c","g","g","c","a","t","g","t","g","t","g","a","g","c","t","g"))
+mcFit   =  markovchainFit(data = sequence)
+MCgraph =  markovchain:::.getNet(mcFit$estimate, round = TRUE)
+edgelab =  round(E(MCgraph)$weight / 100, 1)
+```
+
+When we are looking at a parameter that is a proportion or probability between 0 and 1, it is convenient to use the *beta distribution*. If our prior is the belief that theta is beta and observe data in the form of n binomial trials, then our posterior theta have an updated beta distribution.
+
+The distribution of Y due to a different distribution of theta is known as the *marginal distribution* of Y
+
+### Simulation
+```{r}
+rtheta = rbeta(100000, 50, 350)
+y = vapply(rtheta, function(th) {
+  rbinom(1, prob=th, size=300)
+}, numeric(1))
+hist(y, breaks =50, col ="orange", main= "", xlab = "")
+```
+
+To calculate the posterior of theta, we fous on outcomes where Y was 40.
+
+```{r}
+thetaPostEmp = rtheta[ y == 40 ]
+hist(thetaPostEmp, breaks = 40, col = "chartreuse4", main = "",
+  probability = TRUE, xlab = expression("posterior"~theta))
+densPostTheory  =  dbeta(thetas, 90, 610)
+lines(thetas, densPostTheory, type="l", lwd = 3)
+```
+
+The mean   is:
+
+```{r}
+mean(thetaPostEmp)
+```
+
+Theta can also be estimated using Monte Carlo simulation.
+
+```{r}
+thetaPostMC = rbeta(n=1e6, 90, 610)
+mean(thetaPostMC)
+```
+
+And the theoretical and data posteriors can be compared using a Q-Q plot
+
+```{r}
+qqplot(thetaPostEmp, thetaPostMC, type = "l", asp =1)
+abline(a =0, b=1, col="blue")
+```
+
+## Occurrence of a nucleotide pattern in a genome
+```{r}
+library("Biostrings")
+vignette(package = "Biostrings")
+vignette("BiostringsQuickOverview", package = "Biostrings")
+browseVignettes("Biostrings")
+```
+
+```{r}
+library("BSgenome")
+ag = available.genomes()
+length(ag)
+ag[1:2]
+```
+
+Exploring the occurance of the Shine-Dalgarno (SD) sequence AGGAGGT motif in E. coli str. K12 substr.DH10B
+
+```{r}
+library("BSgenome.Ecoli.NCBI.20080805")
+Ecoli
+shineDalgarno = "AGGAGGT"
+ecoli = Ecoli$NC_010473
+```
+
+Counting the SD occurance in windows of 50000 bp using countPattern
+
+```{r}
+window = 50000
+starts = seq(1, length(ecoli) - window, by = window)
+ends   = starts + window - 1
+numMatches = vapply(seq_along(starts), function(i) {
+  countPattern(shineDalgarno, ecoli[starts[i]:ends[i]],
+               max.mismatch = 0)
+  }, numeric(1))
+table(numMatches)
+```
+
+The distribution seems to follow a poison. This can  be evaluated with 
+```{r}
+library("vcd")
+gf = goodfit(numMatches, "poisson")
+summary(gf)
+distplot(numMatches, type = "poisson")
+
+```
+
+The matches can be explored using matchPattern
+
+```{r}
+sdMatches = matchPattern(shineDalgarno, ecoli, max.mismatch = 0)
+sdMatches
+```
+
+These are all 65 pattern matches of the SD sequence. To find the distance between them;
+
+```{r}
+betweenmotifs = gaps(sdMatches)
+betweenmotifs
+```
+
+Thus there are 65 SD sequences interrupting 66 regions of DNA. The gap lengths would follow an exponential distribution, if the motif were occuring at random locations.
+
+```{r}
+library("Renext")
+expplot(width(betweenmotifs), rate = 1/mean(width(betweenmotifs)), labels = "fit")
+```
+Could exogenous DNA be responsible for the deviation in the distribution?
+
+###Dependencies between the nucleotide occurrences in CpG Islands and remaning DNA of human Chr8.
+
+```{r}
+library("BSgenome.Hsapiens.UCSC.hg19")
+chr8  =  Hsapiens$chr8
+CpGtab = read.table(here("Book", "data", "model-based-cpg-islands-hg19.txt"),
+                    header = TRUE)
+nrow(CpGtab)
+head(CpGtab)
+irCpG = with(dplyr::filter(CpGtab, chr == "chr8"),
+         IRanges(start = start, end = end))
+```
+
+Add more genomic info to irCpG using GRanges and the hg19
+
+```{r}
+grCpG = GRanges(ranges = irCpG, seqnames = "chr8", strand = "+")
+genome(grCpG) = "hg19"
+```
+
+Visualize grCpG
+```{r}
+library("Gviz")
+ideo = IdeogramTrack(genome = "hg19", chromosome = "chr8")
+plotTracks(
+  list(GenomeAxisTrack(),
+    AnnotationTrack(grCpG, name = "CpG"), ideo),
+    from = 2200000, to = 5800000,
+    shape = "box", fill = "#006400", stacking = "dense")
+```
+
+Define views on the chromosome sequence that correspond to the CpG islands, irCpG, and non CpG islands  (gaps(irCpG)).
+```{r}
+CGIview    = Views(unmasked(Hsapiens$chr8), irCpG)
+NonCGIview = Views(unmasked(Hsapiens$chr8), gaps(irCpG))
+```
+## Compute transition counts in CpG islands and non-islands using the data
+```{r}
+seqCGI      = as(CGIview, "DNAStringSet")
+seqNonCGI   = as(NonCGIview, "DNAStringSet")
+dinucCpG    = sapply(seqCGI, dinucleotideFrequency)
+dinucNonCpG = sapply(seqNonCGI, dinucleotideFrequency)
+dinucNonCpG[, 1]
+NonICounts = rowSums(dinucNonCpG)
+IslCounts  = rowSums(dinucCpG)
+NonICounts = rowSums(dinucNonCpG)
+IslCounts  = rowSums(dinucCpG)
+```
+
+```{r}
+TI  = matrix( IslCounts, ncol = 4, byrow = TRUE)
+TnI = matrix(NonICounts, ncol = 4, byrow = TRUE)
+dimnames(TI) = dimnames(TnI) =
+  list(c("A", "C", "G", "T"), c("A", "C", "G", "T"))
+MI = TI /rowSums(TI)
+MI
+MN = TnI / rowSums(TnI)
+MN
+```
+The transitions from C to A and T to A for in the islands (MI) transition matrix seem very different
+
+Are the relative frequencies of the different nucleotides different in CpG islands compared to elsewhere? NB: This is the original question
+```{r}
+freqIsl = alphabetFrequency(seqCGI, baseOnly = TRUE, collapse = TRUE)[1:4]
+freqIsl / sum(freqIsl)
+freqNon = alphabetFrequency(seqNonCGI, baseOnly = TRUE, collapse = TRUE)[1:4]
+freqNon / sum(freqNon)
+```
+
+
+How can we use these differences to decide whether a given sequence comes from a CpG island
+
+
+Suppose our sequence x is ACGTTATACTACG, and we want to decide whether it comes from a CpG island or not. **We use log-likelihood ratio score**
+```{r}
+alpha = log((freqIsl/sum(freqIsl)) / (freqNon/sum(freqNon)))
+alpha
+beta  = log(MI / MN)
+beta
+```
+
+```{r}
+x = "ACGTTATACTACG"
+scorefun = function(x) {
+  s = unlist(strsplit(x, ""))
+  score = alpha[s[1]]
+  if (length(s) >= 2)
+    for (j in 2:length(s))
+      score = score + beta[s[j-1], s[j]]
+  score
+}
+scorefun(x)
+```
+
+```{r}
+generateRandomScores = function(s, len = 100, B = 1000) {
+  alphFreq = alphabetFrequency(s)
+  isGoodSeq = rowSums(alphFreq[, 5:ncol(alphFreq)]) == 0
+  s = s[isGoodSeq]
+  slen = sapply(s, length)
+  prob = pmax(slen - len, 0)
+  prob = prob / sum(prob)
+  idx  = sample(length(s), B, replace = TRUE, prob = prob)
+  ssmp = s[idx]
+  start = sapply(ssmp, function(x) sample(length(x) - len, 1))
+  scores = sapply(seq_len(B), function(i)
+    scorefun(as.character(ssmp[[i]][start[i]+(1:len)]))
+  )
+  scores / len
+}
+scoresCGI    = generateRandomScores(seqCGI)
+scoresNonCGI = generateRandomScores(seqNonCGI)
+```
+
+Plot
+```{r}
+br = seq(-0.6, 0.8, length.out = 50)
+h1 = hist(scoresCGI,    breaks = br, plot = FALSE)
+h2 = hist(scoresNonCGI, breaks = br, plot = FALSE)
+plot(h1, col = rgb(0, 0, 1, 1/4), xlim = c(-0.5, 0.5), ylim=c(0,120))
+plot(h2, col = rgb(1, 0, 0, 1/4), add = TRUE)
+```
