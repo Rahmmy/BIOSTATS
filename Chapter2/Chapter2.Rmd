@@ -694,3 +694,125 @@ h2 = hist(scoresNonCGI, breaks = br, plot = FALSE)
 plot(h1, col = rgb(0, 0, 1, 1/4), xlim = c(-0.5, 0.5), ylim=c(0,120))
 plot(h2, col = rgb(1, 0, 0, 1/4), add = TRUE)
 ```
+
+#### Exercise 2.1 
+Generate 1,000 random 0/1 variables that model mutations occurring along a 1,000 long gene sequence. These occur independently at a rate of 10^(-4) each. Then sum the 1,000 positions to count how many mutations in sequences of length 1,000.  
+
+```{r }
+rand.seq <- rbinom(1000, 1000, 0.0001)
+sum(rand.seq)
+```
+
+Find the correct distribution for these mutation sums using a goodness of fit test and make a plot to visualize the quality of the fit.  
+
+```{r eval=TRUE}
+library("vcd")
+gf1 = goodfit(rand.seq, "poisson")
+rootogram(gf1, xlab = "", rect_gp = gpar(fill = "chartreuse4"))
+```
+
+#~~~~~~~~~~~~~~~~OR~~~~~~~~~~~~~~~~~~~~~~
+#create empty list.
+
+```{r}
+list1 <- list()
+```
+
+### i is stated to mean the number of iterations to be done. So randomly generate the data 1000 times. In each iteration, the number of the mutations will be counted. Once the number of mutations in a particular run is known, the list is appended
+
+```{r}
+for (i in 1:1000) {
+  Q1 <- rbinom(1000,1,0.0001)
+  Q11 <- sum(Q1) 
+  list1[[i]] <- Q11 }
+list11 <- unlist(list1)
+list11
+```
+
+Visualize the sums of mutations in list11 to see the distribution of it
+
+```{r}
+library("vcd") 
+qf1 = goodfit( list11)
+rootogram(qf1, xlab = "", rect_gp = gpar(fill = "chartreuse4"))
+```
+
+#Comment on rootogram
+From the graph, it can be noted the mutation sums are distributed in such a way that, most of the sums are zero and the frequency
+
+
+#Exercise 2.2
+Function that generates n random uniform numbers between 0 and 7 and returns their maximum.
+
+```{r}
+generateRandomNumbers = function(n) 
+{
+  Q2 <- runif(n,min = 0, max = 7)
+  return(max(Q2))
+}
+```
+for n = 25
+
+```{r}
+n <-25
+#create an empty list as list2
+list2 <- list()
+
+#Run the function and save the maximum values in a list called list2 for 100 iterations.
+for (i in 1:100) {
+  Q21 <- generateRandomNumbers(n)
+  list2[[i]] <- Q21
+}
+```
+Convert list list2 to vector list21 annd plot
+
+```{r}
+list21 <- unlist(list2)
+barplot(list21,col = "chartreuse4")
+gf  =  goodfit(list21 )
+names(gf)
+```
+Checking the maximum likelihood estimate of the maximum of a sample of size 25 
+```{r}
+gf$par
+
+library("vcd")
+gf1 = goodfit(list21)
+
+```
+
+
+### Exercise 2.3
+a) Explore the data mtb using table to tabulate the AmAcid and Codon variables.
+
+Load the data
+```{r}
+codons <- read.table(here("Book", "data", "M_tuberculosis.txt"), header=TRUE, quote="\"")
+View(codons)
+```
+Subsetting the two columns; AminoAcid and codons
+```{r}
+con0= codons[,1:2]
+View(con0)
+class(con0)
+```
+
+Using the table function to tabulate the 2 columns
+```{r}
+attach(codons)
+con01= table(codons$AmAcid,codons$Codon)
+View(con01)
+class(con01)
+```
+
+b) How was the PerThous variable created?
+PerThous variable created by summing all the numbers in the column named Number, then divide each in the number column by the total and multiply by 1000. This is shown below
+```{r}
+con1=codons[,3]
+con2 = sum(codons[,3])
+con3 = codons[,3]/con2*1000
+cbind(con1,con3)
+```
+
+c) Write an R function that you can apply to the table to find which of the amino acids shows the strongest codon bias
+
