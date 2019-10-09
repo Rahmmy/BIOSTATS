@@ -695,7 +695,10 @@ plot(h1, col = rgb(0, 0, 1, 1/4), xlim = c(-0.5, 0.5), ylim=c(0,120))
 plot(h2, col = rgb(1, 0, 0, 1/4), add = TRUE)
 ```
 
-#### Exercise 2.1 
+
+######################Exercises#############################
+
+#Exercise 2.1 
 Generate 1,000 random 0/1 variables that model mutations occurring along a 1,000 long gene sequence. These occur independently at a rate of 10^(-4) each. Then sum the 1,000 positions to count how many mutations in sequences of length 1,000.  
 
 ```{r }
@@ -712,13 +715,13 @@ rootogram(gf1, xlab = "", rect_gp = gpar(fill = "chartreuse4"))
 ```
 
 #~~~~~~~~~~~~~~~~OR~~~~~~~~~~~~~~~~~~~~~~
-#create empty list.
+Create empty list.
 
 ```{r}
 list1 <- list()
 ```
 
-### i is stated to mean the number of iterations to be done. So randomly generate the data 1000 times. In each iteration, the number of the mutations will be counted. Once the number of mutations in a particular run is known, the list is appended
+i is stated as the number of iterations to be done. So randomly generate the data 1000 times. In each iteration, the number of the mutations will be counted and containted in the list. 
 
 ```{r}
 for (i in 1:1000) {
@@ -737,8 +740,8 @@ qf1 = goodfit( list11)
 rootogram(qf1, xlab = "", rect_gp = gpar(fill = "chartreuse4"))
 ```
 
-#Comment on rootogram
-From the graph, it can be noted the mutation sums are distributed in such a way that, most of the sums are zero and the frequency
+Comment on rootogram
+From the graph, it can be noted the mutation sums are distributed in such a way that, most of the generatios recorded no mutations.
 
 
 #Exercise 2.2
@@ -751,6 +754,7 @@ generateRandomNumbers = function(n)
   return(max(Q2))
 }
 ```
+
 for n = 25
 
 ```{r}
@@ -764,7 +768,7 @@ for (i in 1:100) {
   list2[[i]] <- Q21
 }
 ```
-Convert list list2 to vector list21 annd plot
+Convert list (list2) to a vector (list21) and plot
 
 ```{r}
 list21 <- unlist(list2)
@@ -780,29 +784,29 @@ library("vcd")
 gf1 = goodfit(list21)
 
 ```
-
+Probably vapply can be used.
 
 ### Exercise 2.3
-a) Explore the data mtb using table to tabulate the AmAcid and Codon variables.
+a) Explore the data mtb using table to tabulate the Amino Acid and Codon variables.
 
 Load the data
 ```{r}
 codons <- read.table(here("Book", "data", "M_tuberculosis.txt"), header=TRUE, quote="\"")
 View(codons)
 ```
-Subsetting the two columns; AminoAcid and codons
+Subsetting the two columns; Amino Acid and codons
 ```{r}
-con0= codons[,1:2]
-View(con0)
-class(con0)
+subcod= codons[,1:2]
+View(subcod)
+class(subcod)
 ```
 
 Using the table function to tabulate the 2 columns
 ```{r}
 attach(codons)
-con01= table(codons$AmAcid,codons$Codon)
-View(con01)
-class(con01)
+subcod1= table(codons$AmAcid,codons$Codon)
+View(subcod1)
+class(subcod1)
 ```
 
 b) How was the PerThous variable created?
@@ -816,3 +820,86 @@ cbind(con1,con3)
 
 c) Write an R function that you can apply to the table to find which of the amino acids shows the strongest codon bias
 
+
+##Exercise 2.4
+
+##Loading and viewing the data
+```{r}
+staph = readDNAStringSet(here("Book", "data", "staphsequence.ffn.txt"), "fasta")
+head(staph,3)
+```
+
+b. Find the GC content in tsequence windows of width 100.
+
+```{r}
+stp = staph[[1]]#stp$NC_010473
+
+window = 100
+starts = seq(1, length(stp) - window, by = window)
+ends   = starts + window - 1
+numMatches = vapply(seq_along(starts), function(i) {
+  countPattern("C", stp[starts[i]:ends[i]],
+               max.mismatch = 0)
+}, numeric(1))
+table(numMatches)
+```
+
+ 
+c. Display the GC content in a sliding window as a fraction.
+
+```{r}
+letterFrequencyInSlidingView(staph[[1]], view.width = 1000, letters = "GC") / 1000
+```
+
+d. How could we visualize the overall trends of these proportions along the sequence?
+
+
+I am not too sure of this
+```{r}
+library("vcd")
+gf = goodfit(numMatches)#
+summary(gf)
+distplot(numMatches)#,
+
+sdMatches = matchPattern("G", stp, max.mismatch = 0)
+betweenmotifs = gaps(sdMatches)
+library("Renext")
+expplot(width(betweenmotifs), rate = 1/mean(width(betweenmotifs)),
+        labels = "line of  goodess offit")
+```
+
+
+##Exercise 2.5
+```{r}
+library("ggplot2")
+```
+
+Simulating theta distribution 
+```{r}
+thetas = seq(0, 1, by = 0.001)
+theta = thetas[1:500]
+```
+
+Simulate data for with different parameters
+```{r}
+dfbetas = data.frame(theta,
+                     db1=  dbeta(theta,0.5,0.5),
+                     db2= dbeta(theta,1,1),
+                     db3= dbeta(theta,10,30),
+                     db4 = dbeta(theta, 20, 60),
+                    db5 = dbeta(theta, 50, 150))
+```
+
+Plot of the distribution
+```{r}
+require(reshape2)
+datalong  =  melt(dfbetas, id="theta")
+ggplot(datalong) +
+  geom_line(aes(x = theta,y=value,colour=variable)) +
+  theme(legend.title=element_blank()) +
+  geom_vline(aes(xintercept=0.25), colour="#990000", linetype="dashed")+
+  scale_colour_discrete(name  ="Prior",
+                        labels=c("B(0.5,0.5)","U(0,1)=B(1,1)","B(10,30)", "B(20,60)","B(50,150)"))
+```
+
+####Exercise 2.6
