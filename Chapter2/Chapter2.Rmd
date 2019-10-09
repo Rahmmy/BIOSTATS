@@ -848,7 +848,7 @@ table(numMatches)
 c. Display the GC content in a sliding window as a fraction.
 
 ```{r}
-letterFrequencyInSlidingView(staph[[1]], view.width = 1000, letters = "GC") / 1000
+GCcontent=letterFrequencyInSlidingView(staph[[1]], view.width = 1000, letters = "GC") / 1000
 ```
 
 d. How could we visualize the overall trends of these proportions along the sequence?
