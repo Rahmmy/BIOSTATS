@@ -820,10 +820,19 @@ cbind(con1,con3)
 
 c) Write an R function that you can apply to the table to find which of the amino acids shows the strongest codon bias
 
+The AA with the strongest bias has the greatest occurance.
+
+```{r}
+sequencebias1 = function(x,column){
+  x[x$Number == max(x[,column]),]
+  }
+sequencebias1(codons, "Number")
+```
+Alanin
 
 ##Exercise 2.4
 
-##Loading and viewing the data
+Loading and viewing the data
 ```{r}
 staph = readDNAStringSet(here("Book", "data", "staphsequence.ffn.txt"), "fasta")
 head(staph,3)
@@ -903,3 +912,4 @@ ggplot(datalong) +
 ```
 
 ####Exercise 2.6
+Help from the facilitators?
