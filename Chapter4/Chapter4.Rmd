@@ -206,7 +206,7 @@ duy %>% group_by(u) %>% summarise(mean(y))
 ```
 
 
-```{r }
+```{r eval=T }
 EMtest <- Mclust(duy$y, nclass=2)
 EMtest$n
 EMtest$df
@@ -215,7 +215,7 @@ EMtest$classification
 head(duy$u,20)
 ```
 
-```{r}
+```{r eval=T}
 gm <- normalmixEM(duy$y, k=2, lambda=c(0.5,0.5), mu=c(-0.01,0.01), sigma=c(1,1))
 gm$lambda
 gm$mu
@@ -233,7 +233,7 @@ The R packages pscl and zicounts provide many examples and functions for working
 
 Demonstration with chromatin immunoprecipitation (ChIP) data
 
-```{r}
+```{r eval=T}
 constructBins(infile = system.file(file.path("extdata", "wgEncodeSydhTfbsGm12878Stat1StdAlnRep1_chr22_sorted.bam"), package="mosaicsExample"),
     fileFormat = "bam", outfileLoc = here("Book", "data"),
     byChr = FALSE, useChrfile = FALSE, chrfile = NULL, excludeChr = NULL,
@@ -248,7 +248,7 @@ binTFBS
 ```
 
 
-```{r }
+```{r eval=T}
 bincts = print(binTFBS)
 ggplot(bincts, aes(x = tagCount)) +
   geom_histogram(binwidth = 1, fill = "forestgreen")
@@ -257,7 +257,7 @@ ggplot(bincts, aes(x = tagCount)) +
 It can be observed that there are many zeros, although from this plot it is not immediately obvious whether the number of zeros is really extraordinary, given the frequencies of the other small numbers 
 Let's edo the histogram of the counts using a logarithm base 10 scale on the y and estimate π0, the proportion of bins with zero counts.
 
-```{r }
+```{r eval=T}
 ggplot(bincts, aes(x = tagCount)) + scale_y_log10() +
    geom_histogram(binwidth = 1, fill = "forestgreen")
 ```
@@ -266,7 +266,7 @@ ggplot(bincts, aes(x = tagCount)) + scale_y_log10() +
 Example:
 What sort of histogram do we get when weighing 7,000 canonical nucleotides (A,T,G,C) each type has a different weight, measured with the same standard deviation sd=3.
 
-```{r}
+```{r eval=T}
 masses = c(A =  331, C =  307, G =  347, T =  322)
 probs  = c(A = 0.12, C = 0.38, G = 0.36, T = 0.14)
 N  = 7000
@@ -342,12 +342,12 @@ quantile(meds,c(0.005,0.995))
 ```
 
 Use the bootstrap package to redo the same analysis using the function bootstrap for both median and mean. What differences do you notice between the sampling distribution of the mean and the median?
-```{r}
+```{r eval=T}
 boot_means=bootstrap(ZeaMays$diff, B, mean)
 boot_medians=bootstrap(ZeaMays$diff, B, median)
 ```
 
-```{r}
+```{r eval=T}
 ggplot(tibble(boot_means$thetastar),aes(x = boot_means$thetastar))+
   geom_histogram(bins = 30, fill = "purple")
 
@@ -358,7 +358,7 @@ ggplot(tibble(boot_medians$thetastar),aes(x = boot_medians$thetastar))+
 The bootstrap uses a mixture with n components, so with a sample of size n, it qualifies as a nonparametric method.
 If the sample is composed of n=3 different values, how many different bootstrap resamples are possible? Answer the same question with n = 15.
 
-```{r}
+```{r eval=T}
 c(N3 = choose(5, 3), N15 = choose(29, 15))
 ```
 
@@ -402,7 +402,7 @@ Examples of sampling schemes that are well modeled by mixtures of Poisson variab
 The gamma distribution is an extension of the (one-parameter) exponential distribution, but it has two parameters, which makes it more flexible. It is often useful as a building block for the upper level of a hierarchical model.
 
 Example gamma distributions
-```{r}
+```{r eval=T}
 set.seed(1234)
 ggplot(tibble(x = rgamma(10000, shape = 2, rate = 1/3)),
    aes(x = x)) + geom_histogram(bins = 100, fill= "purple")
@@ -412,7 +412,7 @@ ggplot(tibble(x = rgamma(10000, shape = 10, rate = 3/2)),
 
 Example gamma-Poisson hierachical model
 
-```{r}
+```{r eval=T}
 lambda = rgamma(10000, shape = 10, rate = 3/2)
 gp = rpois(length(lambda), lambda = lambda)
 ggplot(tibble(x = gp), aes(x = x)) +
@@ -423,7 +423,7 @@ Gamma-Poisson distribution is also called  *negative binomial distribution*.
 Formula for equation is similar to binomial distribution
 Gamma-Poisson is more defining of the underlying principles
   
-```{r}
+```{r eval=T}
 ofit = goodfit(gp, "nbinomial")
 plot(ofit, xlab = "")
 ofit$par
@@ -469,7 +469,7 @@ ggplot(simdat2, aes(x = lambda, y = sqrt(y))) +
 ```
 
 Now Using the gamma-Poisson distribution and and plotting the 95% confidence intervals around the mean.
-```{r}
+```{r eval=T}
 muvalues = 2^seq(0, 10, by = 1)
 simgp = lapply(muvalues, function(mu) {
   u = rnbinom(n = 1e4, mu = mu, size = 4)
@@ -632,7 +632,7 @@ Of all the plots, the normal regression (yn) is easily distiguishable by class. 
 
 b. Fit a two component mixture model using the commands;
 
-```{r}
+```{r eval=T}
 m1 = flexmix(yn ~ x + I(x^2), data = NPreg, k = 2)
 
 #this is a two component model. We can easily observe the cluster sizes, convergence iterations by running the object. More info can be obtained by summary
@@ -640,7 +640,7 @@ m1
 summary(m1)
 #We can also observe the associated parameter of the componets by running parameters() and selecting the appropraite component
 ```
-c.Look at the estimated parameters of the mixture components and make a truth table that cross-classifies true classes versus cluster memberships. What does the summary of the object m1 show us?
+c. Look at the estimated parameters of the mixture components and make a truth table that cross-classifies true classes versus cluster memberships. What does the summary of the object m1 show us?
 
 ```{r}
 parameters(m1, component = 1)
@@ -654,7 +654,7 @@ AIC: 1303.091 and   BIC: 1332.776. The prior and size poterior of both classes a
 
 d. Plot the data again, this time coloring each point according to its estimated class.
 
-```{r}
+```{r eval=T}
 ggplot(NPreg, aes(x = x, y = yn, group = class)) +
    geom_point(aes(colour = as.factor(m1@cluster), shape = factor(class)))
 ```
