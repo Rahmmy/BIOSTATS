@@ -1,3 +1,4 @@
+\DeclareUnicodeCharacter{2212}{-}
 ---
 title: "Mixture Models"
 author: "Abdul-Rahman"
@@ -12,7 +13,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r Load Libraries}
 library("ggplot2")
 library("dplyr")
 library("mixtools")
@@ -29,16 +30,16 @@ library("pheatmap")
 library("colorspace")  
 library("grid")  
 library("ggbio") 
-library(GenomicRanges)
+library("GenomicRanges")
 library("flexmix")
 library("mclust")
 library("mixtools")
 library("mosaics")
 library("mosaicsExample")
 library("here")
-library(HistData)
-library(bootstrap)
-library(vcd)
+library("HistData")
+library("bootstrap")
+library("vcd")
 ```
 
 ## Finite Mixtures
@@ -62,7 +63,7 @@ ggplot(tibble(value = fairmix), aes(x = value)) +
 
 We can use  R’s vectorized syntax to remove the vapply-loop and generate the fairmix vector more efficiently. 
 
-```{r}
+```{r eval=TRUE}
 means = c(1, 3)
 sds   = c(0.25, 0.25)
 values = rnorm(length(coinflips),
@@ -74,7 +75,7 @@ ggplot(tibble(value = values), aes(x = value)) +
 ```
 
 What if we make one million coin flips and make a histogram with 500 bins
-```{r}
+```{r eval=TRUE}
 fair = tibble(
   coinflips = (runif(1e6) > 0.5),
   values = rnorm(length(coinflips),
@@ -87,7 +88,7 @@ The histogram gets nearer to a smooth curve called the density function which of
 
 Compare the values of fair$values for which coinflips is TRUE to density function for a normal random variable.
 
-```{r}
+```{r eval=TRUE}
 ggplot(dplyr::filter(fair, coinflips), aes(x = values)) +
    geom_histogram(aes(y = ..density..), fill = "purple",
                   binwidth = 0.01) +
@@ -99,7 +100,7 @@ Our distributions so far can be matematically represented as the sum of the dens
                             
 
 We can use this concept to generate a graph for two component mixture model with extremely visible distributions (using our previous mean and standard deviations) and minimal overlap.
-```{r}
+```{r eval=TRUE}
 fairtheory = tibble(
   x = seq(-1, 5, length.out = 1000),
   f = 0.5 * dnorm(x, mean = means[1], sd = sds[1]) +
@@ -150,13 +151,14 @@ The EM algorithm is used to infer the value of hidden groupings. It does so by;
 alternating between:  
 - Pretending to know the probability that each observation belongs to a component (and estimating the distribution paramaters of these components)  
 - Pretending to know the distribution parameters of each component (and estimating the probability that each observation belongs to a given component) 
-
+```{r eval=TRUE}
 probHead = c(0.125, 0.25)
 for (pi in c(1/8, 1/4)) {
   whCoin = sample(2, 100, replace = TRUE, prob = c(pi, 1-pi))
   K = rbinom(length(whCoin), size = 2, prob = probHead[whCoin])
   print(table(K))
 }
+```
 
 For example a variable Y is measured on a series of objects that come from two groups (however we do not know which group each object belongs to).  The goal is to estimate the parameters that make the data Y
 This can be done by;  
@@ -164,9 +166,9 @@ This can be done by;
 - Adopting the Maximum Likelihood approach to find the values of U and the unknown parameters of underlying densities.
 
 Scenario 1
-Suppose we have two unfair coins, whose probabilities of heads are p1=0.125 and p2=0.25. With probability π we pick coin 1, with probability 1−π, coin 2. We then toss that coin twice and record the number of heads K.
-a) Simulate 100 instances of this procedure, with π=1/8, and compute the contingency table of K.
-b) Do the same with π=1/4.
+Suppose we have two unfair coins, whose probabilities of heads are p1=0.125 and p2=0.25. With probability pi we pick coin 1, with probability = 1−pi, coin 2. We then toss that coin twice and record the number of heads K.
+a) Simulate 100 instances of this procedure, with pi=1/8, and compute the contingency table of K.
+b) Do the same with pi=1/4.
 c) Can the afore mentioned parameters parameters from the contingency table? 
 
 Solution
@@ -224,8 +226,8 @@ gm$loglik
 ## Models for zero inflated data
 Ecological and molecular data often come in the form of counts. Such as the count data in RNA seq.
 Such data can often be seen as a mixture of two scenarios: 
--If gene is not expressed the count is zero
--It gene is expressed the number of transcripts in different individuals may differ 
+a. If gene is not expressed the count is zero
+b. It gene is expressed the number of transcripts in different individuals may differ 
 
 The R packages pscl and zicounts provide many examples and functions for working with zero inflated counts.
 
@@ -322,7 +324,7 @@ ggplot(ZeaMays, aes(x = diff, ymax = 1/15, ymin = 0)) +
 
 
 We can bootstrap to estimate the sampling distribution of the median of the Zea Mays differences.
-```{r}
+```{r eval=TRUE}
 set.seed(1234)
 B = 1000
 meds = replicate(B, {
@@ -335,7 +337,7 @@ ggplot(tibble(medians = meds), aes(x = medians)) +
 
 We can also estimate a 99% confidence interval for the median based on these simulations.
 The quantile function can be used for this.
-```{r}
+```{r eval=TRUE}
 quantile(meds,c(0.005,0.995))
 ```
 
@@ -391,9 +393,6 @@ ggplot(tibble(alps), aes(x = alps)) +
   geom_histogram(fill = "purple", binwidth = 0.1)
 ```
 
-```{r}
-knitr::include_graphics(c('images/LaplaceMixturePromoterLengths.png','images/tcellhist.png'))
-```
 
 ## Infinite mixtures of poisson variables: the case of gamma-poisson distribution
 modelling a  real-world count data requires a two-level hierarchical model where simple Poisson and binomial distributions serve as the building blocks at the lower level.
@@ -493,7 +492,7 @@ ggplot(simgp, aes(x = mean, y = trsf)) +
   geom_point() + geom_line() + xlab("")
 ```
 
-#####Exercises
+##Exercises
 
 ##Excersise 1
 The EM algorithm step by step
@@ -546,15 +545,15 @@ iter
 a. Which lines correspond to the E-step, which to the M-step?
 
 Algorithm for EM is
-- Given a set of incomplete data, consider a set of starting parameters. 
-- Expectation step (E – step): Using the observed available data of the dataset, estimate (guess) the values of the missing data.This is represented in the code as;
+i. Given a set of incomplete data, consider a set of starting parameters. 
+ii. Expectation step (E – step): Using the observed available data of the dataset, estimate (guess) the values of the missing data.This is represented in the code as;
 lambda = mean(pA)
 >muA = weighted.mean(yvar, pA)
 >muB = weighted.mean(yvar, pB)
 >sdA = sqrt(weighted.mean((yvar - muA)^2, pA))
 >sdB = sqrt(weighted.mean((yvar - muB)^2, pB))
 
-- Maximization step (M – step): Complete data generated after the expectation (E) step is used in order to update the parameters. This is represented in the code as;
+iii. Maximization step (M – step): Complete data generated after the expectation (E) step is used in order to update the parameters. This is represented in the code as;
 >  phiA = dnorm(yvar, mean = muA, sd = sdA)
 >  phiB = dnorm(yvar, mean = muB, sd = sdB)
 >  pA   = lambda * phiA
@@ -662,7 +661,7 @@ ggplot(NPreg, aes(x = x, y = yn, group = class)) +
 
 
 
-# Exercise 4
+## Exercise 4
 Other hierarchical noise models:
 Find two papers that explore the use of other infite mixtures for modeling molecular biology technological variation.
 

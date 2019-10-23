@@ -652,11 +652,11 @@ approach to find the values of U and the unknown parameters of
 underlying densities.
 
 Scenario 1 Suppose we have two unfair coins, whose probabilities of
-heads are p1=0.125 and p2=0.25. With probability π we pick coin 1, with
-probability 1−π, coin 2. We then toss that coin twice and record the
+heads are p1=0.125 and p2=0.25. With probability pi we pick coin 1, with
+probability = 1−pi, coin 2. We then toss that coin twice and record the
 number of heads K. a) Simulate 100 instances of this procedure, with
-π=1/8, and compute the contingency table of K. b) Do the same with
-π=1/4. c) Can the afore mentioned parameters parameters from the
+pi=1/8, and compute the contingency table of K. b) Do the same with
+pi=1/4. c) Can the afore mentioned parameters parameters from the
 contingency table?
 
 Solution
@@ -854,8 +854,9 @@ data}\label{models-for-zero-inflated-data}}
 
 Ecological and molecular data often come in the form of counts. Such as
 the count data in RNA seq. Such data can often be seen as a mixture of
-two scenarios: -If gene is not expressed the count is zero -It gene is
-expressed the number of transcripts in different individuals may differ
+two scenarios: a. If gene is not expressed the count is zero b. It gene
+is expressed the number of transcripts in different individuals may
+differ
 
 The R packages pscl and zicounts provide many examples and functions for
 working with zero inflated counts.
@@ -1574,16 +1575,18 @@ Create the Distributions with the code chunck below.
   Which lines correspond to the E-step, which to the M-step?
 \end{enumerate}
 
-Algorithm for EM is - Given a set of incomplete data, consider a set of
-starting parameters. - Expectation step (E -- step): Using the observed
-available data of the dataset, estimate (guess) the values of the
-missing data.This is represented in the code as; lambda = mean(pA)
+Algorithm for EM is i. Given a set of incomplete data, consider a set of
+starting parameters. ii. Expectation step (E -- step): Using the
+observed available data of the dataset, estimate (guess) the values of
+the missing data.This is represented in the code as; lambda = mean(pA)
 \textgreater{}muA = weighted.mean(yvar, pA) \textgreater{}muB =
 weighted.mean(yvar, pB) \textgreater{}sdA = sqrt(weighted.mean((yvar -
 muA)\^{}2, pA)) \textgreater{}sdB = sqrt(weighted.mean((yvar -
 muB)\^{}2, pB))
 
-\begin{itemize}
+\begin{enumerate}
+\def\labelenumi{\roman{enumi}.}
+\setcounter{enumi}{2}
 \tightlist
 \item
   Maximization step (M -- step): Complete data generated after the
@@ -1593,7 +1596,7 @@ muB)\^{}2, pB))
   sdB) \textgreater{} pA = lambda * phiA \textgreater{} pB = (1 -
   lambda) * phiB \textgreater{} ptot = pA + pB \textgreater{}\\
   \textgreater{} pA = pA / ptot \textgreater{} pB = pB / ptot
-\end{itemize}
+\end{enumerate}
 
 \begin{enumerate}
 \def\labelenumi{\alph{enumi}.}

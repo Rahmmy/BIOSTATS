@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019) (preloaded format=pdflatex 2019.10.23)  23 OCT 2019 04:45
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019) (preloaded format=pdflatex 2019.10.23)  23 OCT 2019 10:46
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -763,22 +763,22 @@ Package pdftex.def Info: "Chapter4_files/figure-latex/""unnamed-chunk-9-1".pdf
 (pdftex.def)             Requested size: 469.75386pt x 325.2142pt.
 [11 <./Chapter4_files/figure-latex/unnamed-chunk-8-1.pdf>]
 
-! Package inputenc Error: Unicode character π (U+03C0)
+! Package inputenc Error: Unicode character − (U+2212)
 (inputenc)                not set up for use with LaTeX.
 
 See the inputenc package documentation for explanation.
 Type  H <return>  for immediate help.
  ...                                              
                                                   
-l.655 ...p1=0.125 and p2=0.25. With probability π
-                                                   we pick coin 1, with 
+l.656 probability = 1−
+                        pi, coin 2. We then toss that coin twice and record the
+ 
 Here is how much of TeX's memory you used:
  10929 strings out of 494111
- 157036 string characters out of 6170576
+ 157038 string characters out of 6170576
  225299 words of memory out of 5000000
  14929 multiletter control sequences out of 15000+600000
  24923 words of font info for 25 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  31i,6n,34p,304b,441s stack positions out of 5000i,500n,10000p,200000b,80000s
-
 !  ==> Fatal error occurred, no output PDF file produced!
