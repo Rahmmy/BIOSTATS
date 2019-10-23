@@ -593,7 +593,7 @@ The results are similar. However the normalmixEM function acheives the optimal l
 ##Excersise 2
 Compare the theoretical values of the gamma-Poisson distribution with parameters given by the estimates in ofit$par in Section 4.4.3 to the data used for the estimation using a QQ-plot.
 ```{r eval=T}
-#Obtain quantiles of the two heirachy simulated data (gp). But first use ppoints() to find the ordinates
+#Obtain quantiles of the two heirachy simulated data (gp). But first use ppoints() to find the ordinates for probability ploting
 ordinates= ppoints(1000)
 quant_raw=quantile(gp,ordinates)
 
