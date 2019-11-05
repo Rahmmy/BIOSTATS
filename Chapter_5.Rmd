@@ -181,11 +181,11 @@ as.dist(mutC)
 
 ```
 
-The Jaccard distance provides more similarity that the correlation based distance
+The Jaccard distance provides more similarity than the correlation based distance
 
 
-Other distance calcuylation functions are;
-- daisy() - used for computing distance between complex objects that are not vectors or real numbers. it has the option for Gower's distance for data of mixed modalities.  
+Other distance calculation functions are;
+- daisy() - used for computing distance between complex objects that are not vectors or real numbers. It has the option for Gower's distance for data of mixed modalities.  
 
 - shortest.paths() - from igraph package. Computes the distance between vertices on a graph.  
 
