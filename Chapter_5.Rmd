@@ -1,0 +1,961 @@
+\DeclareUnicodeCharacter{2212}{-}
+
+---
+title: "Clustering"
+author: "Abdul-Rahman"
+date: "20/10/2019"
+output:
+  pdf_document: default
+  html_document: default
+
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<button data-toggle="collapse" data-target="#lib">Libraries</button>
+<div id="lib" class="collapse">
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(MASS)
+library(RColorBrewer)
+library("vegan")
+library("ggplot2")
+library("clusterExperiment")
+library("flowCore")
+library("flowViz")
+library("flowPeaks")
+library("SamSPECTRAL")
+library("ggcyto")
+library("labeling")
+library("dbscan")
+library("pheatmap")
+library("gplots")
+library("pheatmap")
+library("RColorBrewer")
+library("dplyr")
+library("fpc")
+library("scRNAseq")
+library("cluster")
+library("Hiiragi2013")
+library("mixtools")
+library("tibble")
+library("dada2")
+library("graphics")
+library("kernlab")
+library("here")
+library("readr")
+library("factoextra")
+library("philentropy")
+```
+
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("flowWorkspace")
+</div>
+
+<p id="0"><u><font size="5"><b>Table of contents</b></font></u></p>  
+&emsp; <a href="#1">[1]</a> Clustering  
+&emsp; <a href="#2">[2]</a> Goals for this chapter  
+&emsp; <a href="#4">[4]</a> What are the data and why do we cluster them?  
+&emsp; <a href="#5">[5]</a> Nonparametric mixture detection approaches  
+&emsp; <a href="#6">[6]</a> Clustering examples: flow cytometry and mass cytometry 
+&emsp; <a href="#7">[7]</a> Density-based clustering 
+&emsp; <a href="#8">[8]</a> Hierarchical clustering 
+&emsp; <a href="#9">[9]</a> Validating and choosing the number of clusters
+&emsp; <a href="#10">[10]</a> Clustering as a means for denoising    
+&emsp; <a href="#15">[15]</a> Exercises  
+</br>
+
+
+### Chapter Overview
+
+This Chapter focuses on finding meaningful clusters or groups in both low-dimensional and high-dimensional nonparametric settings.
+Clustering takes data (continuous or quasi-continuous) and adds to them a new categorical group variable. It is however important to not that clustering algorithms are designed to find clusters, so they will find clusters, even where there are none Therefore, cluster validation is an essential, especially if there is no prior domain knowledge that supports the existence of clusters.
+
+## Goals
+
+* Determine what types of data can be clustered.
+* Learn about similarity measures and distances that are used to cluster data.
+* Find latent clustering by partioning data into tighter sets
+* Use clustering when given 1000s of biomarkers
+* Nonparametric algoriths on single cell data (k-means, k-mediods)
+* Use recursive approach to combine observatiosn and groups into a hierarchy of sets (hierarchical clusting)
+* Validate clusters using boostrap approaches
+
+
+
+##What are the data and why do we cluster them
+Clustering is a useful technique for understanding complex multivariate data; it is an unsupervised.
+The techniques explored in this chapter are more general and can be applied to more complex data. Clustering can sometimes lead to discoveries as seen with the discovery of the source of cholera by John Snow.
+
+
+##How do we measure similarity?
+We choose the relevant features that define similarity and decide how we combine differences between the multiple features into a single number.
+We use distances in assessing similarities and subsequently clustering
+Examples of distances are 
+-Minkowski
+-Euclidean
+-Manhattan
+-Maximum
+-Weighted Euclidean distance (eg Mahalanobis)
+-Edit, Hamming (comparing character sequences)
+-Binary
+-Jaccard Distance
+
+
+NB: These are not some mesures are more specialized for specific tasks.
+For example in the figure below, the Mahalanobis distance is a better estmate of measuring the distance of a new data point (red) from two the cluster centers.
+```{r eval=T}
+
+library(MASS)
+set.seed(101)
+n <- 60000
+S1=matrix(c(1,.72,.72,1), ncol=2)
+S2=matrix(c(1.5,-0.6,-0.6,1.5),ncol=2)
+mu1=c(.5,2.5)
+mu2=c(6.5,4)
+
+X1 = mvrnorm(n, mu=c(.5,2.5), Sigma=matrix(c(1,.72,.72,1), ncol=2))
+X2 = mvrnorm(n,mu=c(6.5,4), Sigma=matrix(c(1.5,-0.6,-0.6,1.5),ncol=2))
+
+library(RColorBrewer)
+k = 11
+my.cols <- rev(brewer.pal(k, "RdYlBu"))
+plot(X1, xlim=c(-4,12),ylim=c(-2,9), xlab="Orange", ylab="Red", pch='.', cex=1)
+points(X2, pch='.', cex=1)
+z1 = kde2d(X1[,1], X1[,2], n=50)
+z2 = kde2d(X2[,1], X2[,2], n=50)
+contour(z1, drawlabels=FALSE, nlevels=k, col=my.cols, add=TRUE, lwd=2)
+contour(z2, drawlabels=FALSE, nlevels=k, col=my.cols, add=TRUE, lwd=2)
+points(3.2,2,pch=20,cex=2.2,col="red")
+lines(c(3.2,6.5),c(2,4),col="red",lwd=3)
+lines(c(3.2,.5),c(2,2.5),col="red",lwd=3)
+```
+
+## Computations related to distances in R
+there are a myraid of function in R for computing distances;
+
+- dist() - uses half the  space of the full n2 positions. It  completes n distance matrix between n objects would require. Computes euclidean, maximum, manhattan, canberra, binary or minkowski distance and outputs a vector of values sufficient to reconstruct the complete distance matrix.  
+
+Example;
+
+```{r}
+mx  = c(0, 0, 0, 1, 1, 1)
+my  = c(1, 0, 1, 1, 0, 1)
+mz  = c(1, 1, 1, 0, 1, 1)
+mat = rbind(mx, my, mz)
+dist(mat)
+dist(mat, method = "binary")
+dist(mat, method = "minkowski")
+dist(mat, method = "canberra")
+dist(mat, method = "maximum")
+
+```
+
+To access a particular distance between any 2 observations, one has to turn the dist class object back into a matrix.
+```{r}
+load(here("Book","data","Morder.RData"))
+sqrt(sum((Morder[1, ] - Morder[2, ])^2))
+as.matrix(dist(Morder))[2, 1]
+```
+
+We could also compute the Jaccard distance defined above between HIV strains.
+
+```{r}
+
+mut = read.csv(here("Book","data","HIVmutations.csv"))
+mut[1:3, 10:16]
+
+library("vegan")
+mutJ = vegdist(mut, "jaccard")
+
+#Compare the Jaccard distance, vegdist() between mutations in the HIV to the correlation based distance.
+mutC = sqrt(2 * (1 - cor(t(mut))))
+mutJ
+as.dist(mutC)
+
+```
+
+The Jaccard distance provides more similarity that the correlation based distance
+
+
+Other distance calcuylation functions are;
+- daisy() - used for computing distance between complex objects that are not vectors or real numbers. it has the option for Gower's distance for data of mixed modalities.  
+
+- shortest.paths() - from igraph package. Computes the distance between vertices on a graph.  
+
+- cophenetic() - Computes the distance between leaves of a phylogenetic tree plots.  
+
+- dist.multiPhylo() - from distory package. Compute distance between trees.
+
+- similarity() - from igraph package. examine similarity between two graphs built on same nodes by counting numnber of co-occurring edges.  
+
+
+*A carefully  chosen distance can lead to the solution of many hard problems involving heterogeneous data.*
+
+## Nonparametric mixture detection
+k -methods: k-means, k-medoids and PAM
+k-means and k-medoids algorithms are partitional and both attempt to minimize the distance between points labeled to be in a cluster and a point designated as the center of that cluster. In contrast to the k-means algorithm, k-medoids chooses data points as centers and can be used with arbitrary distances, while in k-means the centre of a cluster is not necessarily one of the input data points (it is the average between the points in the cluster).
+
+
+Steps in The PAM (partitioning around medoids) algorithm is as follows:
+
+1. Starts from a matrix of p features measured on a set of n observations.
+
+2. Randomly pick k distinct cluster centers out of the n observations (“seeds”).
+
+3. Assign each of the remaining observation to the group to whose center it is the closest.
+
+4. For each group, choose a new center from the observations in the group, such that the sum of the distances of group members to the center is minimal; this is called the medoid.
+
+5. Repeat Steps 3 and 4 until the groups stabilize.
+
+k-methods are the most common methods for clustering. They work well when the clusters are of comparable size and eliptical.
+
+
+In the EM algorithm, each point participates in the computation of the mean of all the groups through a probabilistic weight assigned to it. In the the k-means algorithm differs from the EM algoithm, the points are either attributed to a cluster or not, so each point participates only, and entirely, in the computation of the center of one cluster.
+
+Question 5.4
+Call the ensemble clustering function *clusterMany*, using pam for the individual clustering efforts. Set the choice of genes to include at either the 60, 100 or 150 most variable genes. Plot the clustering results for k varying between 4 and 9.
+
+```{r eval=T}
+data("fluidigm", package = "scRNAseq")
+se = fluidigm[, fluidigm$Coverage_Type == "High"]
+assays(se) = list(normalized_counts = 
+   round(limma::normalizeQuantiles(assay(se))))
+ce = clusterMany(se, clusterFunction = "pam", ks = 5:10, run = TRUE,
+  isCount = TRUE, reduceMethod = "var", nFilterDims = c(60, 100, 150))
+clusterLabels(ce) = sub("FilterDims", "", clusterLabels(ce))
+plotClusters(ce, whichClusters = "workflow", axisLine = -1)
+
+```
+
+## Clustering examples: flow cytometry and mass cytometry
+Flow cytometry (FC) is a technique used to detect and measure physical and chemical characteristics of a population of cells or particles.  Flow cytometry is routinely used in basic research, clinical practice, and clinical trials. Uses for flow cytometry include:
+
+- Cell counting
+- Cell sorting
+- Determining cell characteristics and function
+- Detecting microorganisms
+- Biomarker detection. An example of a commonly used CD is CD4, this protein is expressed by helper T cells that are referred to as being “CD4+”.
+
+Mass cytometry is similar to FC but this approach overcomes limitations of spectral overlap in flow cytometry by utilizing discrete isotopes as a reporter system instead of traditional fluorophores which have broad emission spectra. Tt can also measure greater  markers (~80)
+
+Example of FC with data from flowCore and visualize with flowViz
+```{r eval=TRUE}
+#read in FACS data using read.FCS from flowCore package
+fcsB = read.FCS(here("Book","data","Bendall_2011.fcs"))
+#look at the names
+slotNames(fcsB)
+```
+
+*Question: Look at the structure of the fcsB object (hint: the colnames function). How many variables were measured?*  
+
+```{r eval=TRUE}
+colnames(fcsB)
+```
+
+41 variables were measured including 38 isotopes (markers)
+
+*Question: Subset the data to look at the first few rows (hint: use Biobase::exprs(fcsB)). How many cells were measured?*
+
+```{r eval=TRUE}
+Biobase::exprs(fcsB)
+```
+*91392 cells* were measured
+
+
+## Data pre-processing
+Like all bioinformatics datasets, initially generated flow cytometry data must undergo pre-processing to remove artifacts and poor quality data, and to be transformed onto an optimal scale for identifying cell populations of interest. It is also not trivial, as a preprocessing step, to replace the isotope names in the column names of fcsB with the marker names. This makes the subsequent analysis and plotting code more readable. Thus we will replace the isotpes used here with the actuall markers.
+
+```{r eval=TRUE}
+#load the table data that reports the mapping between isotopes and markers (antibodies)
+markersB = read_csv(here("Book","data","Bendall_2011_markers.csv"))
+#replace isotope name with column name of fcsB
+mt = match(markersB$isotope, colnames(fcsB))
+colnames(fcsB)[mt] = markersB$marker
+#plto data using flowPlot function from flowViz
+flowPlot(fcsB, plotParameters = colnames(fcsB)[2:3], logy = TRUE)
+```
+
+This readily shows the existence of two subpopulations shows that the cells can be grouped into subpopulations.
+
+
+- Data Transformation: This an important preprocessing step whcich can greatly improve cell clustering. Hyperbolic arcsin (asinh)  is a standard to transform both flow and mass cytometry data. This is because large values behave like log transform  while small values behave like linear function.  
+
+```{r VST_flow_data, eval=TRUE}
+#simulate a sequence of 100 values between 0 and 1. i.e simulation of small values
+v1 = seq(0, 1, length.out = 100)
+#plot asinh transform against the log transform of the sequence
+plot(log(v1), asinh(v1), type = 'l')
+#Plot the asinh transform againt the raw sequence.
+plot(v1, asinh(v1), type = 'l')
+#make a sequence of 100 nums between 30 and 3000 ie simulate large values
+v3 = seq(30, 3000, length = 100)
+#plot the asinh transform against the log transform of the sequence
+plot(log(v3), asinh(v3), type= 'l')
+
+#Plot the asinh transform againt the raw sequence.
+plot(v3, asinh(v3), type = 'l')
+
+# These plots show that large values behave like log transform  while small values behave like linear function.  
+```
+
+asinh transforms are an example of variance stabilizing transformations. This is important in handling biodata.
+
+Appying asinh transform to our fcsb data;
+```{r flow_data_asinh_transform, eval=TRUE}
+#Create the definition of an arcsinh transformation function
+asinhtrsf = arcsinhTransform(a = 0.1, b = 1)
+#apply the arcsinh transformation to fcsB
+fcsBT = transform(fcsB,
+  transformList(colnames(fcsB)[-c(1, 2, 41)], asinhtrsf))
+#plot and compare compare fcsB before and after transforming
+densityplot( ~`CD3all`, fcsB)
+densityplot( ~`CD3all`, fcsBT)
+```
+After an asinh transformation, the cells cluster and fall into two groups or types
+
+
+*Question: How many dimensions does the following code use to split the data into 2 groups using k-means ?*  
+
+```{r eval=TRUE}
+
+kf = kmeansFilter("CD3all" = c("Pop1","Pop2"), filterId="myKmFilter")
+fres = flowCore::filter(fcsBT, kf)
+summary(fres)
+fcsBT1 = flowCore::split(fcsBT, fres, population = "Pop1")
+fcsBT2 = flowCore::split(fcsBT, fres, population = "Pop2")
+fp = flowPeaks(Biobase::exprs(fcsBT)[, c("CD3all", "CD56")])
+plot(fp)
+flowPlot(fcsBT, plotParameters = c("CD3all", "CD56"), logy = FALSE)
+contour(fcsBT[, c(40, 19)], add = TRUE)
+```
+The kmeansFilter used here performs a one-dimensional k-means clustering on a single flow parameter. 
+Lets compare this plot which a similar plot generated with ggcyto
+
+```{r}
+ggcd4cd8=ggcyto(fcsB,aes(x=CD4,y=CD8))
+ggcd4=ggcyto(fcsB,aes(x=CD4))
+ggcd8=ggcyto(fcsB,aes(x=CD8))
+ggcd4+geom_histogram(bins=60)
+ggcd8+geom_histogram(bins=60)
+asinhT = arcsinhTransform(a=0,b=1)
+transl = transformList(colnames(fcsB)[-c(1,2,41)], asinhT)
+fcsBT = transform(fcsB, transl)
+ggcyto(fcsBT,aes(x=CD4))+geom_histogram(bins=90)
+ggcyto(fcsBT,aes(x=CD4,y=CD8))+geom_density2d(colour="black")
+ggcyto(fcsBT,aes(x=CD45RA,y=CD20))+geom_density2d(colour="black")
+
+```
+
+The outputs of both ggcyto and flowPlot are similar. But the flowplot seems more informative.
+
+
+## Density-based clustering
+
+Density-based clusters are dense areas in the data space separated from each other by sparser areas. Furthermore, the density within the areas of noise is lower than the density in any of the clusters. 
+It has the advantage of being able to cope with clusters that are not necessarily convex, hence a better alternative to k-means clustering when data defies the asumtions of k-means.
+One implementation of such a method is called dbscan. see https://link-springer-com.uml.idm.oclc.org/referenceworkentry/10.1007%2F978-0-387-39940-9_605 for more on Density-based clustering.
+
+For each core point the neighborhood of radius *Eps* has to contain at least *MinPts* points, i.e., the density in the neighborhood has to exceed some threshold.
+Example using the fcsBT data
+```{r}
+mc5 = Biobase::exprs(fcsBT)[, c(15,16,19,40,33)]
+res5 = dbscan::dbscan(mc5, eps = 0.65, minPts = 30)
+mc5df = data.frame(mc5, cluster = as.factor(res5$cluster))
+table(mc5df$cluster)
+ggplot(mc5df, aes(x=CD4,    y=CD8,  col=cluster))+geom_density2d()
+ggplot(mc5df, aes(x=CD3all, y=CD20, col=cluster))+geom_density2d()
+```
+
+*Question: Try increasing the dimension to 6 by adding one CD marker-variables from the input data.
+Then vary eps, and try to find four clusters such that at least two of them have more than 100 points.
+Repeat this with 7 CD marker-variables, what do you notice?*
+
+```{r six markers, chanching eps at constant minPts }
+mc6 = Biobase::exprs(fcsBT)[, c(15, 16, 19, 33, 25, 40)]
+res1 = dbscan::dbscan(mc6, eps = 0.65, minPts = 30)
+res2 = dbscan::dbscan(mc6, eps = 0.6, minPts = 30)
+res3 = dbscan::dbscan(mc6, eps = 0.55, minPts = 30)
+res4 = dbscan::dbscan(mc6, eps = 0.7, minPts = 30)
+res5 = dbscan::dbscan(mc6, eps = 0.72, minPts = 30)
+res6 = dbscan::dbscan(mc6, eps = 0.80, minPts = 30)
+mc6df = data.frame(mc6, cluster = as.factor(res1$cluster))
+table(mc6df$cluster)
+mc6df = data.frame(mc6, cluster = as.factor(res2$cluster))
+table(mc6df$cluster)
+mc6df = data.frame(mc6, cluster = as.factor(res3$cluster))
+table(mc6df$cluster)
+mc6df = data.frame(mc6, cluster = as.factor(res4$cluster))
+table(mc6df$cluster)
+mc6df = data.frame(mc6, cluster = as.factor(res5$cluster))
+table(mc6df$cluster)
+mc6df = data.frame(mc6, cluster = as.factor(res6$cluster))
+table(mc6df$cluster)
+```
+
+Thus at constant minPts, eps has to be increased to achieve greater number of clusters. But by tweeking these parameters, one can achieve a desired cluster and members.
+
+```{r seven markers, chanching eps at constant minPts }
+mc7 = Biobase::exprs(fcsBT)[, c(11, 15, 16, 19, 25, 33, 40)]
+res1 = dbscan::dbscan(mc7, eps = 0.65, minPts = 30)
+res2 = dbscan::dbscan(mc7, eps = 0.6, minPts = 30)
+res3 = dbscan::dbscan(mc7, eps = 0.55, minPts = 30)
+res4 = dbscan::dbscan(mc7, eps = 0.7, minPts = 30)
+res5 = dbscan::dbscan(mc7, eps = 0.72, minPts = 30)
+res6 = dbscan::dbscan(mc7, eps = 0.80, minPts = 30)
+mc6df = data.frame(mc7, cluster = as.factor(res1$cluster))
+table(mc6df$cluster)
+mc7df = data.frame(mc7, cluster = as.factor(res2$cluster))
+table(mc7df$cluster)
+mc7df = data.frame(mc7, cluster = as.factor(res3$cluster))
+table(mc7df$cluster)
+mc7df = data.frame(mc7, cluster = as.factor(res4$cluster))
+table(mc7df$cluster)
+mc7df = data.frame(mc7, cluster = as.factor(res5$cluster))
+table(mc7df$cluster)
+mc7df = data.frame(mc7, cluster = as.factor(res6$cluster))
+table(mc7df$cluster)
+res7 = dbscan::dbscan(mc7, eps = 0.9, minPts = 20)
+mc7df = data.frame(mc7, cluster = as.factor(res7$cluster))
+table(mc7df$cluster)
+res7 = dbscan::dbscan(mc7, eps = 0.9, minPts = 20)
+mc7df = data.frame(mc7, cluster = as.factor(res7$cluster))
+table(mc7df$cluster)
+```
+
+If the number of dimensions is increased, eps must also increase while minPts needs to decrease to maintain more than one cluster. This is called the *curse of dimensionality*.  
+
+
+## Hierarchical clustering
+
+Hierarchical clustering is a bottom-up approach. This algorithm starts with all the data points assigned to a cluster of their own. Then two nearest clusters are merged into the same cluster. In the end, this algorithm terminates when there is only a single cluster left. Normally represented in dedrograms where horizontal distances are usually meaningless, while the vertical distances do encode some information. 
+
+An alternative approach to this is the *Bottom-up approach (Divisive)* where observations are initially taken as a single cluster and subsequently subclassed iteratively.
+
+#How to compute (dis)similarities between aggregated clusters?
+
+There variuos ways of calculating the similarities between aggregated clusters;
+
+- Minimal jump method (single linkage or nearest neighbor method) - distance between clusters is the smallest distance between any two points in the two clusters.  
+
+- Maximum jump method (complete linkage) - distance between clusters is the largest distance between any two objects in the two clusters.  
+
+- Average linkage method - average of minimal and maximum jump distances.
+
+- Ward's methood - minimizes variance within clusters (ANOVA approach), but often break a cluster into smaller clusters if variability is high  
+
+- Centroid - robust to outliers
+
+Other methods are Unweighted average linkage clustering (or UPGMA), Weighted average linkage clustering (or WPGMA).
+
+When we have prior knowledge that the clusters are about the same size, using average linkage or Ward’s method of minimizing the within class variance is the best tactic.
+
+*Question 5.8:  Hierarchical clustering for cell populations. The Morder data are gene expression measurements for 156 genes on T cells of 3 types (naïve, effector, memory) from 10 patients (Holmes et al. 2005). Using the pheatmap package, make two simple heatmaps, without dendogram or reordering, for Euclidean and Manhattan distances of these data.*
+
+
+```{r eval=TRUE}
+pheatmap::pheatmap(as.matrix(Morder), clustering_distance_rows="manhattan", cluster_rows=FALSE, cluster_cols=FALSE,legend = TRUE)
+pheatmap::pheatmap(as.matrix(Morder), clustering_distance_rows="euclidean", cluster_rows=FALSE, cluster_cols=FALSE, legend=TRUE)
+```
+
+Compore with tree-included heatmanp
+
+
+```{r eval=TRUE}
+pheatmap::pheatmap(as.matrix(Morder), clustering_distance_rows="manhattan")
+pheatmap::pheatmap(as.matrix(Morder), clustering_distance_rows="euclidean")
+```
+
+Clusters are more visible when dendrograms are included.
+
+## Validating and choosing the number of clusters
+
+As with many statistical analysis it it important to associate an analysis with some level of confidence, thus the need for validating identified clusters. 
+The *within-groups sum of squared distances (WSS)* is a one metric used. It validates by asking to what extent the chosen clustering maximizes the between group differences while keeping the within-group distances small by calculating the . However, need more criteria as the WSS is maximized by making each point it's own cluster. WSSk is decreasing function, but if there is a pronounced region where it decreases sharply and then flattens out, we call this an elbow and might take this as a potential sweet spot for the number of clusters.
+
+Scenairo where we already know how many groupings there should be to illustrate how to find that number.
+
+```{r eval=TRUE}
+simdat = lapply(c(0, 8), function(mx) {
+  lapply(c(0,8), function(my) {
+    tibble(x = rnorm(100, mean = mx, sd = 2),
+           y = rnorm(100, mean = my, sd = 2),
+           class = paste(mx, my, sep = ":"))
+   }) %>% bind_rows
+}) %>% bind_rows
+simdat
+#remove class label
+simdatxy = simdat[, c("x", "y")]
+#plot simdat coloured by class labels
+ggplot(simdat, aes(x = x, y = y, col = class)) + geom_point() +
+  coord_fixed()
+```
+
+We can then compute the within-groups sum of squares for the clusters obtained from the k-means method
+```{r eval=TRUE}
+wss = tibble(k = 1:8, value = NA_real_)
+wss$value[1] = sum(scale(simdatxy, scale = FALSE)^2)
+for (i in 2:nrow(wss)) {
+  km  = kmeans(simdatxy, centers = wss$k[i])
+  wss$value[i] = sum(km$withinss)
+}
+#plot the within group sum of squares as function of k
+ggplot(wss, aes(x = k, y = value)) + geom_col()
+ #or
+plot(wss$k, wss$value,
+     type="b", pch = 19, frame = FALSE, 
+     xlab="Number of clusters K",
+     ylab="Total within-clusters sum of squares")
+```
+
+*Question: Create a set of data with uniform instead of normal distributions with the same range and dimensions as simdat. Compute the WSS values for for thess data. What do you conclude?*
+```{r eval=TRUE}
+simdat2 = lapply(c(0, 8), function(mx) {
+  lapply(c(0,8), function(my) {
+    tibble(x = runif(100, min = -1200, max=2000),
+           y = runif(100, min = -1200, max=2000),
+           class = paste(mx, my, sep = ":"))
+   }) %>% bind_rows
+}) %>% bind_rows
+simdat2
+#remove class label
+simdatxy2 = simdat2[, c("x", "y")]
+#plot simdatxy coloured by class labels
+ggplot(simdat2, aes(x = x, y = y, col = class)) + geom_point() +
+  coord_fixed()
+wss = tibble(k = 1:8, value = NA_real_)
+wss$value[1] = sum(scale(simdatxy2, scale = FALSE)^2)
+for (i in 2:nrow(wss)) {
+  km  = kmeans(simdatxy2, centers = wss$k[i])
+  wss$value[i] = sum(km$withinss)
+}
+#plot the within group sum of squares as function of k
+ggplot(wss, aes(x = k, y = value)) + geom_col()
+
+plot(wss$k, wss$value,
+     type="b", pch = 19, frame = FALSE, 
+     xlab="Number of clusters K",
+     ylab="Total within-clusters sum of squares")
+```
+
+
+
+*Question: Plot the Calinski-Harabasz index for the simdat data.*
+
+```{r Calinski-Harabasz, eval=TRUE}
+CH = tibble(
+  k = 2:8,
+  value = sapply(k, function(i) {
+    #Partitioning Around Medoids (pam) from cluster package
+    p = pam(simdatxy, i)
+    # compute Calinski-Harabasz index using calinhara from fpc package
+    calinhara(simdatxy, p$cluster)
+  })
+)
+#plot the  indecies
+ggplot(CH, aes(x = k, y = value)) + geom_line() + geom_point() +
+  ylab("CH index")
+```
+
+##Using the gap statistic
+The gap statistic compute log(WSSk) for a range of values of k (clusters) and compares it to that obtained on reference data of similar dimensions with various possible non-clustered distributions. Can use uniformly distributed data.  
+
+Algorithm for computing the gap statistic:  
+
+1. Cluster the data with k clusters and compute WSSk for the various choices of k.  
+2. Generate B plausible reference data sets, using Monte Carlo sampling from a homogeneous distribution and redo Step 1 above for these new simulated data. This results in B new within-sum-of-squares for simulated data W∗kb, for b=1,...,B.  
+3. Compute the gap(k)-statistic:  
+
+
+
+The cluster and clusterCrit packages can be used.
+*Question: Make a function that plots the gap statistic as in Figure 5.27. Show the output for the simdat example dataset clustered with the pam function.*
+
+```{r eval=TRUE}
+pamfun = function(x, k)
+  list(cluster = pam(x, k, cluster.only = TRUE))
+gss = clusGap(simdatxy, FUN = pamfun, K.max = 8, B = 100,
+              verbose = FALSE)
+plot_gap = function(x) {
+  gstab = data.frame(x$Tab, k = seq_len(nrow(x$Tab)))
+  ggplot(gstab, aes(k, gap)) + geom_line() +
+    geom_errorbar(aes(ymax = gap + SE.sim,
+                      ymin = gap - SE.sim), width=0.1) +
+    geom_point(size = 3, col=  "red")
+}
+plot_gap(gss)
+```
+The gap statistic indicates k= 4 clusters as optimal.  
+
+*Try  the gap statistic method on data from Hiiragi2013.*
+```{r eval=TRUE}
+data("x") 
+selFeats = order(rowVars(Biobase::exprs(x)), decreasing = TRUE)[1:50]
+embmat = t(Biobase::exprs(x)[selFeats, ])
+embgap = clusGap(embmat, FUN = pamfun, K.max = 24, verbose = FALSE)
+k1 = maxSE(embgap$Tab[, "gap"], embgap$Tab[, "SE.sim"])
+k2 = maxSE(embgap$Tab[, "gap"], embgap$Tab[, "SE.sim"],
+           method = "Tibs2001SEmax")
+c(k1, k2)
+plot(embgap, main = "")
+cl = pamfun(embmat, k = k1)$cluster
+table(pData(x)[names(cl), "sampleGroup"], cl)
+```
+
+*Question: How do the results change if you use all the features in x, rather than subsetting the top 50 most variable genes?*
+```{r eval=TRUE}
+data("x") 
+selFeats = order(rowVars(Biobase::exprs(x)), decreasing = TRUE)
+embmat = t(Biobase::exprs(x)[selFeats, ])
+embgap = clusGap(embmat, FUN = pamfun, K.max = 24, verbose = FALSE)
+k1 = maxSE(embgap$Tab[, "gap"], embgap$Tab[, "SE.sim"])
+k2 = maxSE(embgap$Tab[, "gap"], embgap$Tab[, "SE.sim"],
+           method = "Tibs2001SEmax")
+c(k1, k2)
+plot(embgap, main = "")
+cl = pamfun(embmat, k = k1)$cluster
+table(pData(x)[names(cl), "sampleGroup"], cl)
+```
+
+##Cluster validation using the bootstrap
+ 
+```{r}
+ clusterResampling = function(x, ngenes = 50, k = 2, B = 250,
+                             prob = 0.67) {
+  mat = Biobase::exprs(x)
+  ce = cl_ensemble(list = lapply(seq_len(B), function(b) {
+    selSamps = sample(ncol(mat), size = round(prob * ncol(mat)),
+                      replace = FALSE)
+    submat = mat[, selSamps, drop = FALSE]
+    sel = order(rowVars(submat), decreasing = TRUE)[seq_len(ngenes)]
+    submat = submat[sel,, drop = FALSE]
+    pamres = pam(t(submat), k = k)
+    pred = cl_predict(pamres, t(mat[sel, ]), "memberships")
+    as.cl_partition(pred)
+  }))
+  cons = cl_consensus(ce)
+  ag = sapply(ce, cl_agreement, y = cons)
+  list(agreements = ag, consensus = cons)
+}
+```
+ 
+```{r}
+iswt = (x$genotype == "WT")
+cr1 = clusterResampling(x[, x$Embryonic.day == "E3.25" & iswt])
+cr2 = clusterResampling(x[, x$Embryonic.day == "E3.5"  & iswt])
+ ag1 = tibble(agreements = cr1$agreements, day = "E3.25")
+ag2 = tibble(agreements = cr2$agreements, day = "E3.5")
+p1 <- ggplot(bind_rows(ag1, ag2), aes(x = day, y = agreements)) +
+  geom_boxplot() +
+  ggbeeswarm::geom_beeswarm(cex = 1.5, col = "#0000ff40")
+mem1 = tibble(y = sort(cl_membership(cr1$consensus)[, 1]),
+              x = seq(along = y), day = "E3.25")
+mem2 = tibble(y = sort(cl_membership(cr2$consensus)[, 1]),
+              x = seq(along = y), day = "E3.5")
+p2 <- ggplot(bind_rows(mem1, mem2), aes(x = x, y = y, col = day)) +
+  geom_point() + facet_grid(~ day, scales = "free_x")
+gridExtra::grid.arrange(p1, p2, widths = c(2.4,4.0)) 
+```
+
+##Clustering as a means for denoising
+Sequence data that are often degraded by technical noise can we denoised using clustering.
+
+##Noisy observations with different baseline frequencies
+Suppose that we have a bivariate distribution of observations (10^3 of seq1 and 10^5 of seq2), with very different baseline frequencies, made with the same error variances. Assume the errors are continuous independent bivariate normally distributed. 
+
+```{r}
+seq1 = rmvnorm(n = 1e3, mu = -c(1, 1), sigma = 0.5 * diag(c(1, 1)))
+seq2 = rmvnorm(n = 1e5, mu =  c(1, 1), sigma = 0.5 * diag(c(1, 1)))
+twogr = data.frame(
+  rbind(seq1, seq2),
+  seq = factor(c(rep(1, nrow(seq1)),
+                 rep(2, nrow(seq2))))
+)
+colnames(twogr)[1:2] = c("x", "y")
+ggplot(twogr, aes(x = x, y = y, colour = seq,fill = seq)) +
+  geom_hex(alpha = 0.5, bins = 50) + coord_fixed()
+```
+
+The difference in the apparent radii of the groups shows that there are many more opportunities for errors in seq2 than seq1.
+
+```{r}
+a= clara(twogr, k=2, samples = 10500, metric = "euclidean", pamLike= TRUE, stand = FALSE)
+a$clustering
+fviz_cluster(a, geom = "point")
+```
+
+Task: Simulate n=2000 binary variables of length len=200 that indicate the quality of n sequencing reads of length len. For simplicity, let us assume that sequencing errors occur independently and uniformly with probability perr=0.001. That is, we only care whether a base was called correctly (TRUE) or not (FALSE). Then, compute all pairwise distances between reads._
+
+```{r eval=TRUE}
+n    = 2000
+len  = 200
+perr = 0.001
+seqs = matrix(runif(n * len) >= perr, nrow = n, ncol = len)
+#compute pairwise distance between all reads and store in matrix called dists
+dists = as.matrix(dist(seqs, method = "manhattan"))
+#For various values of number of reads k (from 2 to n), the maximum distance within this set of reads is computed by the code below
+dfseqs = tibble(
+  k = 10 ^ seq(log10(2), log10(n), length.out = 20),
+  diameter = vapply(k, function(i) {
+    s = sample(n, i)
+    max(dists[s, s])
+    }, numeric(1)))
+#plot the diameter of a set of sequences as a function of the number of sequences.
+ggplot(dfseqs, aes(x = k, y = diameter)) + geom_point()+geom_smooth()
+```
+
+##Denoising 16S rRNA sequences
+Inherent differences in the variable regions of the 16S rRNA genes will enable the identification  of species. 
+```{r}
+simseq10K = replicate(1e5, sum(rpois(200, 0.0005)))
+simseq1K = replicate(1e2, sum(rpois(200, 0.0005)))
+a = density(simseq10K)
+plot(a)
+b = density(simseq1K)
+plot(b)
+```
+
+##Infer sequence variants
+
+```{r eval=TRUE}
+#read in Forwrd (F) and Reverse (R) reads
+derepFs = readRDS(file=here("Book","data","derepFs.rds"))
+derepRs = readRDS(file=here("Book","data","derepRs.rds"))
+# denoise Forwrd (F) and Reverse (R) reads
+ddF = dada(derepFs, err = NULL, selfConsist = TRUE)
+ddR = dada(derepRs, err = NULL, selfConsist = TRUE)
+#verify that the error transition rates have been reasonably well estimated
+plotErrors(ddF)
+plotErrors(ddR)
+
+#rerun the algorithm is rerun on the data to find the sequence variants:
+dadaFs1 = dada(derepFs, err=ddF[[1]]$err_out, pool = TRUE)
+dadaRs1 = dada(derepRs, err=ddR[[1]]$err_out, pool = TRUE)
+
+#We merge the inferred forward and reverse sequences
+mergers = mergePairs(dadaFs, derepFs, dadaRs, derepRs)
+
+#produce a contingency table of counts of ASVs.
+seqtab.all = makeSequenceTable(mergers[!grepl("Mock",names(mergers))])
+
+#remove chimeras
+seqtab = removeBimeraDenovo(seqtab.all)
+```
+*Question: Explore the components of the objects dadaRs and mergers.*
+
+```{r eval=TRUE}
+View(dadaRs)
+#to get more infor about the elements run the dadaRs withiout any function
+dadaRs
+summary(dadaRs)
+view(mergers)
+summary(mergers)
+```
+dadaRs has 20 lists each with a legnth of 11 and class dada. mergers also has 20 lists but each with a legnth of 9 and class data.frame a list of length 20. Its elements are objects class dada that contain the denoised reads. 
+
+*Question: Why do you think the chimera are quite easy to recognize? What proportion of the reads were chimeric in the seqtab.all data? What proportion of unique sequence variants are chimeric?*
+```{r}
+#Chimeric sequences are identified if they can be exactly reconstructed by combining a left-segment and a right-segment from two more abundant “parent” sequences.
+(sum(seqtab.all)-sum(seqtab))/sum(seqtab.all)
+```
+
+##Chapter Summary
+
+- Distance: Always choose a distance that is scientifically meaningful and compare output from as many distances as possible;       sometimes the same data require different distances when different scientific objectives are pursued.
+
+-Two ways of clustering:
+   iterative partitioning approaches such as k-means and k-medoids (PAM) that alternated between estimating the cluster centers      and assigning points to them.
+   
+   hierarchical clustering approaches that first agglomerate points, and subsequently the growing clusters, into nested sequences    of sets that can be represented by hierarchical clustering trees.
+
+- Clustering is important tool for finding latent classes in single cell measurements, especially in immunology and single cell     data analyses. Density-based clustering is useful for lower dimensional data where sparsity is not an issue.
+
+- Statistics such as WSS/BSS or log (WSS) can be calibrated using simulations on data where we understand the group structure and   can provide useful benchmarks for choosing the number of clusters on new data
+
+- Distances and probabilities: It is important to take into account baseline frequencies and local densities when clustering. This  is essential in a cases such as clustering to denoise 16S rRNA sequence reads where the true class or taxa group occur at very    different frequencies.
+
+## Exercises
+
+### Exercise 5.1 
+
+#### 5.1a  
+Compute the silhouette index for the *simdat* data we simulated in Section 5.7.
+```{r eval=TRUE}
+library("cluster")
+pam4 = pam(simdatxy, 4)
+sil = silhouette(pam4, 4)
+plot(sil, col=c("red","green","blue","purple"), main="Silhouette")
+```
+
+#### 5.1b  
+Change the number of clusters k and assess which k gives the best silhouette index.  
+Silhoutte index closer to 1 is better. 
+```{r eval=TRUE}
+pam4 = pam(simdatxy, 2)
+sil = silhouette(pam4, 2)
+plot(sil, col=c("red","green","blue","purple"), main="Silhouette")
+
+pam3 = pam(simdatxy, 3)
+sil = silhouette(pam3, 3)
+plot(sil, col=c("red","green","blue","purple"), main="Silhouette")
+
+pam6 = pam(simdatxy, 6)
+sil = silhouette(pam6, 6)
+plot(sil, col=c("red","green","blue","purple"), main="Silhouette")
+
+pam8 = pam(simdatxy, 8)
+sil = silhouette(pam8, 8)
+plot(sil, col=c("red","green","blue","purple"), main="Silhouette")
+```
+
+The best average silhouette is given by 4 clusters
+
+#### 5.1c   
+Now, repeat this for groups that have uniform (unclustered) data distributions over a whole range of values.  
+
+```{r eval=TRUE}
+#We will use uniform the simulated random uniform distribution *simdatxy2* data we simulated in Section 5.7.
+pama = pam(simdatxy2, 2)
+sil = silhouette(pama, 2)
+plot(sil, col=c("red","green","blue","purple"), main="Silhouette")
+
+pamb = pam(simdatxy2, 3)
+sil = silhouette(pamb, 3)
+plot(sil, col=c("red","green","blue","purple"), main="Silhouette")
+
+pamc = pam(simdatxy2, 6)
+sil = silhouette(pamc, 6)
+plot(sil, col=c("red","green","blue","purple"), main="Silhouette")
+
+pamd = pam(simdatxy2, 8)
+sil = silhouette(pamd, 8)
+plot(sil, col=c("red","green","blue","purple"), main="Silhouette")
+```
+Three clusters work best
+
+### Exercise 5.2  
+
+#### 5.2a  
+Make a "character" representation of the distance between the 20 locations in the dune data from the vegan package using the function symnum.  
+
+```{r eval=TRUE}
+a = as.data.frame(data(dune))
+dunedist <- distance(a, method = "jaccard")
+ch_rep <- symnum(dunedist)
+```
+
+#### 5.2b  
+Make a heatmap plot of these distances.
+```{r}
+pheatmap::pheatmap(as.matrix(dune), clustering_distance_rows="jaccard", cluster_rows=FALSE, cluster_cols=FALSE,cellwidth=8,cellheight=10)
+```
+
+
+### Exercise 5.3  
+
+#### 5.3a  
+Load the spirals data from the kernlab package. Plot the results of using k-means on the data.  
+
+```{r eval=TRUE}
+data("spirals")
+#plot with k-means
+clusts = kmeans(spirals,2)$cluster
+plot(spirals, col = c("blue", "red")[clusts])
+```
+
+#### 5.3b  
+You'll notice that the clustering in Figure 5.35 seems unsatisfactory. Show how a different method, such as specc or dbscan, could cluster spirals data in a more useful manner.  
+
+```{r eval=TRUE}
+dbscan.res = dbscan::dbscan(spirals, eps = 0.16, minPts = 3)
+plot(spirals,col=c("blue","red","forestgreen")[res.dbscan$cluster])
+```
+5.3.c Repeat the dbscan clustering with different parameters. How robust is the number of groups?
+
+```{r}
+dbscan.res = dbscan::dbscan(spirals, eps = 0.66, minPts = 4)
+plot(spirals,col=c("blue","red","forestgreen")[res.dbscan$cluster])
+ 
+```
+
+#Exercise 5.4
+Can you guess the reason(s) for this clustering and high incidence rates on the West and East coasts and around Chicago?
+Ans:
+Ethnicity
+life style
+Low research coverage
+
+
+#Exercise 5.5
+```{r}
+base_dir = here("Book","data")
+miseq_path = file.path(base_dir, "MiSeq_SOP")
+filt_path = file.path(miseq_path, "filtered")
+fnFs = sort(list.files(miseq_path, pattern="_R1_001.fastq"))
+fnRs = sort(list.files(miseq_path, pattern="_R2_001.fastq"))
+sampleNames = sapply(strsplit(fnFs, "_"), `[`, 1)
+if (!file_test("-d", filt_path)) dir.create(filt_path)
+filtFs = file.path(filt_path, paste0(sampleNames, "_F_filt.fastq.gz"))
+filtRs = file.path(filt_path, paste0(sampleNames, "_R_filt.fastq.gz"))
+fnFs = file.path(miseq_path, fnFs)
+fnRs = file.path(miseq_path, fnRs)
+print(length(fnFs))
+plotQualityProfile(fnFs[1:2]) + ggtitle("Forward")
+plotQualityProfile(fnRs[1:2]) + ggtitle("Reverse")
+```
+
+### Exercise 5.6  
+Generate similar plots for four randomly selected sets of forward and reverse reads. Compare forward and reverse read qualities; what do you notice?  
+
+```{r eval=TRUE}
+plotQualityProfile(fnFs[10:13]) + ggtitle("Forward")
+plotQualityProfile(fnRs[10:13]) + ggtitle("Reverse")
+```
+The total number of forward reads eequals the number of reverse reads. the quality scores at the tail of the basecalls at the tails (>=150bp) are characteristically poorer. 
+
+### Exercise 5.7  
+Trim the reads according to the read quality plots.  
+
+```{r eval=TRUE}
+trimmed_reads <- filterAndTrim(fwd=fnFs, filt=filtFs, rev=fnRs, filt.rev=filtRs,
+                  trimLeft=10, truncLen=c(240, 160), 
+                  maxN=0, maxEE=2,
+                  compress=TRUE, verbose=TRUE)
+
+#check for the effect of trimming by plotting
+plotQualityProfile(filtFs[1:2]) + ggtitle("Forward")
+plotQualityProfile(filtFs[1:2]) + ggtitle("Reverse")
+```
+
+##Exercise 5.8
+```{r}
+#load ggmap
+library(ggmap)
+
+origAddress <- origAddress <- read.xlsx(here("Book","data","Location.xlsx"))#, stringsAsFactors = FALSE)
+# Initialize the data frame
+geocoded <- data.frame(stringsAsFactors = FALSE)
+
+# Loop through the addresses to get the latitude and longitude of each address and add it to the
+# origAddress data frame in new columns lat and lon
+for(i in 1:nrow(origAddress))
+{
+  # Print("Working...")
+  result <- geocode(origAddress$Location[i], output = "latlona", source = "google") #coulnd execute this as Google now requires an API key
+  origAddress$lon[i] <- as.numeric(result[1])
+  origAddress$lat[i] <- as.numeric(result[2])
+  origAddress$geoAddress[i] <- as.character(result[3])
+}
+# Write a CSV file containing origAddress to the working directory
+write.csv(origAddress, "geocoded.csv", row.names=FALSE)
+```
+
+
+

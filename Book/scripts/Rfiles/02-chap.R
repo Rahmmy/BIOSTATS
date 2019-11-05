@@ -584,3 +584,9 @@ geom_vline(aes(xintercept=0.25), colour="#990000", linetype="dashed")+
 scale_colour_discrete(name  ="Prior",
                           labels=c("B(0.5,0.5)","U(0,1)=B(1,1)","B(10,30)", "B(20,60)","B(50,150)"))
 
+
+
+
+
+library(MASS)
+

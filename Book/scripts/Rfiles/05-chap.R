@@ -162,7 +162,7 @@ mt = match(markersB$isotope, colnames(fcsB))
 stopifnot(!any(is.na(mt)))
 colnames(fcsB)[mt] = markersB$marker
 
-## ----ObviousClusters, fig.keep = 'high', fig.cap = "Cell measurements that show clear clustering in two dimensions."----
+## ----ObviousClusters, fig.keep = 'high', fig.cap = "Cell measuseqtabents that show clear clustering in two dimensions."----
 flowPlot(fcsB, plotParameters = colnames(fcsB)[2:3], logy = TRUE)
 
 ## ----v1v3, warning = FALSE-----------------------------------------------
@@ -515,7 +515,7 @@ class(mergers)
 length(mergers)
 
 ## ----chimeras------------------------------------------------------------
-seqtab = removeBimeraDenovo(seqtab.all)
+seqtab = seqtaboveBimeraDenovo(seqtab.all)
 
 library("cluster")
 pam4 = pam(simdatxy, 4)

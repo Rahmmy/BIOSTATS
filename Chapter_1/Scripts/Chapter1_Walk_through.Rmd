@@ -139,10 +139,24 @@ In method two;
 If lower.tail = TRUE(default) then probabilities are P[X ≤ x], meaning probability of 6, 5, 4, 3, 2, 1, 0 people == proability of less than 7
 If lower.tail = FALSE then probabilities are  P(X > x) so P(X>6) meaning probability of 7,8,9,10,11, ..., n people from 7 to 100 == proability => 7
 
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install()
 
 
 
 
 
 
-
+list1 <- list()#create empty list.
+for (i in 1:200000) {
+  Q1 <- rbinom(1000,1,0.0001) #randomly enerate 0/1 randomly.
+  Q11 <- sum(Q1) #sum positions to count mutations.
+  list1[[i]] <- Q11 # add te sims to a list.
+}
+list11 <- unlist(list1)# convert te list to a vector
+list11
+barplot(list11,col = "chartreuse4")#plot
+library("vcd") #to do a rootogram
+qf1 = goodfit( list11)
+rootogram(qf1, xlab = "", rect_gp = gpar(fill = "chartreuse4"))

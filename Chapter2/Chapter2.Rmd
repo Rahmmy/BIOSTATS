@@ -772,8 +772,8 @@ Convert list (list2) to a vector (list21) and plot
 
 ```{r}
 list21 <- unlist(list2)
-barplot(list21,col = "chartreuse4")
-gf  =  goodfit(list21 )
+histogram(list21,col = "chartreuse4")
+#gf  =  histogram(list21 )
 names(gf)
 ```
 Checking the maximum likelihood estimate of the maximum of a sample of size 25 
@@ -839,7 +839,7 @@ head(staph,3)
 ```
 
 b. Find the GC content in tsequence windows of width 100.
-
+I made an error
 ```{r}
 stp = staph[[1]]#stp$NC_010473
 
@@ -852,6 +852,26 @@ numMatches = vapply(seq_along(starts), function(i) {
 }, numeric(1))
 table(numMatches)
 ```
+
+Alternatively
+b.
+```{r}
+window = 100
+gc = rowSums( letterFrequencyInSlidingView(staph[[364]], window,c("G","C")))
+```
+
+c.
+```{r}
+gcfraction = rowSums( letterFrequencyInSlidingView(staph[[364]], window,c("G","C")))/window
+```
+
+d.
+```{r}
+plot(x = seq(along = gc), y = gc, type = "l")
+```
+
+
+
 
  
 c. Display the GC content in a sliding window as a fraction.
@@ -913,3 +933,4 @@ ggplot(datalong) +
 
 ####Exercise 2.6
 Help from the facilitators?
+tinytex::install_tinytex()
