@@ -52,24 +52,6 @@ library("philentropy")
 library("openxlsx")
 ```
 
-
-
-</div>
-
-<p id="0"><u><font size="5"><b>Table of contents</b></font></u></p>  
-&emsp; <a href="#1">[1]</a> Clustering  
-&emsp; <a href="#2">[2]</a> Goals for this chapter  
-&emsp; <a href="#4">[4]</a> What are the data and why do we cluster them?  
-&emsp; <a href="#5">[5]</a> Nonparametric mixture detection approaches  
-&emsp; <a href="#6">[6]</a> Clustering examples: flow cytometry and mass cytometry 
-&emsp; <a href="#7">[7]</a> Density-based clustering 
-&emsp; <a href="#8">[8]</a> Hierarchical clustering 
-&emsp; <a href="#9">[9]</a> Validating and choosing the number of clusters
-&emsp; <a href="#10">[10]</a> Clustering as a means for denoising    
-&emsp; <a href="#15">[15]</a> Exercises  
-</br>
-
-
 ### Chapter Overview
 
 This Chapter focuses on finding meaningful clusters or groups in both low-dimensional and high-dimensional nonparametric settings.
@@ -329,10 +311,12 @@ After an asinh transformation, the cells cluster and fall into two groups or typ
 kf = kmeansFilter("CD3all" = c("Pop1","Pop2"), filterId="myKmFilter")
 fres = flowCore::filter(fcsBT, kf)
 summary(fres)
+plot(fres)
 fcsBT1 = flowCore::split(fcsBT, fres, population = "Pop1")
 fcsBT2 = flowCore::split(fcsBT, fres, population = "Pop2")
 fp = flowPeaks(Biobase::exprs(fcsBT)[, c("CD3all", "CD56")])
 plot(fp)
+fp
 flowPlot(fcsBT, plotParameters = c("CD3all", "CD56"), logy = FALSE)
 contour(fcsBT[, c(40, 19)], add = TRUE)
 ```
@@ -846,16 +830,18 @@ Three clusters work best
 Make a "character" representation of the distance between the 20 locations in the dune data from the vegan package using the function symnum.  
 
 ```{r eval=TRUE}
-a = as.data.frame(data(dune))
-dunedist <- distance(a, method = "jaccard")
+class(dune)
+dunedist <- philentropy::distance(dune, method = "jaccard")
 ch_rep <- symnum(dunedist)
 ch_rep
+
 ```
 
 #### 5.2b  
 Make a heatmap plot of these distances.
 ```{r}
-pheatmap::pheatmap(as.matrix(dune), clustering_distance_rows="jaccard", cluster_rows=FALSE, cluster_cols=FALSE,cellwidth=8,cellheight=10)
+pheatmap::pheatmap(dune, clustering_distance_rows="euclidean", cluster_rows=FALSE, cluster_cols=FALSE,cellwidth=8,cellheight=10)
+pheatmap::pheatmap(dune, clustering_distance_rows="euclidean",cluster_rows=TRUE, cluster_cols=TRUE)
 ```
 
 
