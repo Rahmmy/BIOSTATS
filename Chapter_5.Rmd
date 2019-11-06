@@ -283,7 +283,7 @@ flowPlot(fcsB, plotParameters = colnames(fcsB)[2:3], logy = TRUE)
 
 ```
 
-This readily shows the existence of two subpopulations shows that the cells can be grouped into subpopulations.
+This readily shows the existence of two subpopulations based on cell length and radiotyped DNA
 
 
 - Data Transformation: This an important preprocessing step whcich can greatly improve cell clustering. Hyperbolic arcsin (asinh)  is a standard to transform both flow and mass cytometry data. This is because large values behave like log transform  while small values behave like linear function.  
