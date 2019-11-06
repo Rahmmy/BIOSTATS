@@ -19,8 +19,8 @@ knitr::opts_chunk$set(echo = TRUE)
 <div id="lib" class="collapse">
 
 ```{r libraries, message=FALSE, warning=FALSE}
-library(MASS)
-library(RColorBrewer)
+library("MASS")
+library("RColorBrewer")
 library("vegan")
 library("ggplot2")
 library("clusterExperiment")
@@ -49,13 +49,11 @@ library("here")
 library("readr")
 library("factoextra")
 library("philentropy")
+library("openxlsx")
 ```
 
 
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
 
-BiocManager::install("flowWorkspace")
 </div>
 
 <p id="0"><u><font size="5"><b>Table of contents</b></font></u></p>  
@@ -236,7 +234,7 @@ plotClusters(ce, whichClusters = "workflow", axisLine = -1)
 ```
 
 ## Clustering examples: flow cytometry and mass cytometry
-Flow cytometry (FC) is a technique used to detect and measure physical and chemical characteristics of a population of cells or particles.  Flow cytometry is routinely used in basic research, clinical practice, and clinical trials. Uses for flow cytometry include:
+Flow cytometry (FC) is a technique used to detect and measure physical and chemical characteristics of a population of cells or particles.  Flow cytometry is routinely used in basic research, clinical practice, and clinical trials. Uses of flow cytometry include:
 
 - Cell counting
 - Cell sorting
@@ -274,13 +272,17 @@ Biobase::exprs(fcsB)
 Like all bioinformatics datasets, initially generated flow cytometry data must undergo pre-processing to remove artifacts and poor quality data, and to be transformed onto an optimal scale for identifying cell populations of interest. It is also not trivial, as a preprocessing step, to replace the isotope names in the column names of fcsB with the marker names. This makes the subsequent analysis and plotting code more readable. Thus we will replace the isotpes used here with the actuall markers.
 
 ```{r eval=TRUE}
-#load the table data that reports the mapping between isotopes and markers (antibodies)
+#load the metadata that links isotopes to markers (antibodies)
 markersB = read_csv(here("Book","data","Bendall_2011_markers.csv"))
 #replace isotope name with column name of fcsB
 mt = match(markersB$isotope, colnames(fcsB))
 colnames(fcsB)[mt] = markersB$marker
-#plto data using flowPlot function from flowViz
+#Visualize data with flowPlot function of flowViz
 flowPlot(fcsB, plotParameters = colnames(fcsB)[2:3], logy = TRUE)
+
+mt = match(markersB$isotope, colnames(fcsB))
+stopifnot(!any(is.na(mt)))
+colnames(fcsB)[mt] = markersB$marker
 ```
 
 This readily shows the existence of two subpopulations shows that the cells can be grouped into subpopulations.
@@ -736,8 +738,8 @@ plotErrors(ddF)
 plotErrors(ddR)
 
 #rerun the algorithm is rerun on the data to find the sequence variants:
-dadaFs1 = dada(derepFs, err=ddF[[1]]$err_out, pool = TRUE)
-dadaRs1 = dada(derepRs, err=ddR[[1]]$err_out, pool = TRUE)
+dadaFs = dada(derepFs, err=ddF[[1]]$err_out, pool = TRUE)
+dadaRs = dada(derepRs, err=ddR[[1]]$err_out, pool = TRUE)
 
 #We merge the inferred forward and reverse sequences
 mergers = mergePairs(dadaFs, derepFs, dadaRs, derepRs)
@@ -849,6 +851,7 @@ Make a "character" representation of the distance between the 20 locations in th
 a = as.data.frame(data(dune))
 dunedist <- distance(a, method = "jaccard")
 ch_rep <- symnum(dunedist)
+ch_rep
 ```
 
 #### 5.2b  
@@ -939,7 +942,7 @@ plotQualityProfile(filtFs[1:2]) + ggtitle("Reverse")
 #load ggmap
 library(ggmap)
 
-origAddress <- origAddress <- read.xlsx(here("Book","data","Location.xlsx"))#, stringsAsFactors = FALSE)
+origAddress <- origAddress <- read.xlsx(here("Book","data","Location.xlsx"))
 # Initialize the data frame
 geocoded <- data.frame(stringsAsFactors = FALSE)
 
