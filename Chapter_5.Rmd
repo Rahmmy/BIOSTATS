@@ -276,13 +276,11 @@ Like all bioinformatics datasets, initially generated flow cytometry data must u
 markersB = read_csv(here("Book","data","Bendall_2011_markers.csv"))
 #replace isotope name with column name of fcsB
 mt = match(markersB$isotope, colnames(fcsB))
+stopifnot(!any(is.na(mt)))
 colnames(fcsB)[mt] = markersB$marker
 #Visualize data with flowPlot function of flowViz
 flowPlot(fcsB, plotParameters = colnames(fcsB)[2:3], logy = TRUE)
 
-mt = match(markersB$isotope, colnames(fcsB))
-stopifnot(!any(is.na(mt)))
-colnames(fcsB)[mt] = markersB$marker
 ```
 
 This readily shows the existence of two subpopulations shows that the cells can be grouped into subpopulations.
