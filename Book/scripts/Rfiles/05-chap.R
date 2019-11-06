@@ -157,7 +157,7 @@ fcsB = read.FCS("../data/Bendall_2011.fcs")
 slotNames(fcsB)
 
 ## ----RenameCols, message=FALSE, warning=FALSE----------------------------
-markersB = readr::read_csv("../data/Bendall_2011_markers.csv")
+markersB = readr::read_csv("/Users/abdul-rahmanbukari/Documents/BIOSTATS/Book/data/Bendall_2011_markers.csv")
 mt = match(markersB$isotope, colnames(fcsB))
 stopifnot(!any(is.na(mt)))
 colnames(fcsB)[mt] = markersB$marker
