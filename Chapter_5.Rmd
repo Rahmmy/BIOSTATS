@@ -840,8 +840,8 @@ ch_rep
 #### 5.2b  
 Make a heatmap plot of these distances.
 ```{r}
-pheatmap::pheatmap(dune, clustering_distance_rows="euclidean", cluster_rows=FALSE, cluster_cols=FALSE,cellwidth=8,cellheight=10)
-pheatmap::pheatmap(dune, clustering_distance_rows="euclidean",cluster_rows=TRUE, cluster_cols=TRUE)
+pheatmap::pheatmap(dunedist, clustering_distance_rows="euclidean", cluster_rows=FALSE, cluster_cols=FALSE,cellwidth=8,cellheight=10)
+pheatmap(dunedist, cluster_rows=TRUE, cluster_cols=TRUE, show_colnames = TRUE, show_rownames = TRUE)
 ```
 
 
