@@ -1,0 +1,570 @@
+---
+title: "High-Throughput Count Data"
+author: "Abdul-Rahman Adamu Bukari"
+date: "22/11/2019"
+output: html_document
+bibliography: biblio.bib
+---
+<style>
+body {
+text-align: justify}
+</style>
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, Load Libraries,  message=FALSE, warning=FALSE}
+library("here")
+library("edgeR")
+library("tibble")
+library("dplyr")
+library("ggplot2")
+library("DESeq2")
+library("ade4")
+library("kableExtra")
+library("SummarizedExperiment")
+library("pasilla")
+library("pheatmap")
+library("factoextra")
+library("MASS")
+library("pheatmap")
+library("lattice")
+library("ggcorrplot")
+library("ggfortify")
+library("ggrepel")
+library("pracma")
+library("ggridges")
+```
+
+## Chapter Overview
+High-throughput sequencing assays that provide quantitative readouts in the form of count data include;
+
+-**RNA-Seq**:RNA molecules found in a population of cells or in a tissue 
+
+-**ChIP-Seq**: DNA regions that are bound to particular DNA-binding proteins (selected by immuno-precipitation) 
+
+-**RIP-Seq**:RNA molecules or regions of them bound to a particular RNA-binding protein 
+
+-**DNA-Seq**: genomic DNA with prevalence of genetic variants in heterogeneous populations of cells
+
+-**HiC**: map the 3D spatial arrangement of DNA 
+
+-**genetic screens**: proliferation or survival of cells upon gene knockdown
+
+-**microbiome**: abundance of different microbial species in complex microbial habitats.
+
+Analyzing such data requires elaborate statistical techniques and considerations. This chapter addresses on such techniques with a special focus on RNA-seq.
+
+```{r, out.width = '65%', echo=FALSE, fig.cap = "**Basic RNA-seq Workflow**"}
+
+knitr::include_graphics(here("Workflow.jpg"))
+```
+
+## 8.1 Chapter Goals 
+
+The main aim is to detect and quantify systematic changes between samples from different conditions.
+
+Statstical concepts and tools that will be employed include;
+- multifactorial designs, linear models and analysis of variance
+
+- generalized linear models
+
+- robustness and outlier detection
+
+- shrinkage estimation
+
+- data transformations that make data amenable to unsupervised methods
+
+
+## 8.2 Some core concepts
+
+- _A sequencing library_ is the collection of DNA molecules used as input for the sequencing machine.
+
+- *Fragments* are the molecules being sequenced. Since the currently most widely used technology can only deal with molecules of length around 300–1000 nucleotides, these are obtained by fragmenting the (generally longer) DNA or cDNA molecules of interest.
+
+- _A read_ is the sequence obtained from a fragment. 
+
+
+
+## 8.3 Count data
+We bigin with gene count data from an experiment on effect of RNAi knockdown of Pasilla (@brooks2011conservation), the Drosophila melanogaster ortholog of mammalian NOVA1 and NOVA2, on the transcriptome.
+```{r}
+fn = system.file("extdata", "pasilla_gene_counts.tsv",
+                  package = "pasilla", mustWork = TRUE)
+counts = as.matrix(read.csv(fn, sep = "\t", row.names = "gene_id"))
+dim(counts)
+
+counts[ 2000+(0:3), ]
+```
+
+### 8.3.1 The challenges of count data
+
+-Heteroskedasticity
+
+-Non-symmetric distribution
+
+-Systematic sampling biases
+
+-Sources of stochastic experimental variation
+
+Designed RNA-seq experiments are usually limited in in replicates used and hence lack enough power. Hence distributional assumptions that let us compute the probabilities of rare events in the tails of the distribution are made.
+
+### 8.3.2 RNA-Seq: what about gene structures, splicing, isoforms?
+
+These are approched differently than a DGE analysis.
+
+[Isoforms](https://en.wikipedia.org/wiki/Gene_isoform): Gene isoforms are mRNAs that are produced from the same locus but are different in their transcription start sites (TSSs), protein coding DNA sequences (CDSs) and/or untranslated regions (UTRs), potentially altering gene function. The analysis of DAST is challenging because the isoform origin for only a small fraction of the sequenced reads can be determined in a typical RNA-seq dataset @hu2018penndiff.
+
+Analyses of such gene structures are termed, Differential alternative splicing or transcription (DAST). This is done by tools such as:
+
+- PennDiff
+
+- Cuffdiff
+
+- SplicingCompass
+
+- rSeqDiff
+
+- DiffSplice 
+
+
+## 8.4 Modeling count data
+
+### 8.4.1 Dispersion
+
+
+Gene expression variability across technical replicates, has been shown to approximately follow a Poisson distribution, for which the variance is equal to the mean.
+
+Thus the probability that a given read maps to the $i^{th}$ gene is $p_i = n_i/n$, and that this is pretty much independent of the outcomes for all the other reads. This can be modelled as a poison distribution with rate;
+$λ_i=rp_i$ where $r$ is the number of reads. 
+
+However, biological replication introduces additional cross-sample variability, and analysis frameworks therefore have resorted to the usage of the gamma-Poisson or the negative binomial (NB) distribution which has an additional dispersion parameter and a quadratic mean-variance relationship.
+
+
+### 8.4.2 Normalization
+
+The observed counts of the features cannot be directly compared across samples since there are differences in sequencing depth across libraries; hence the need for scaling/*normalizing* the counts.
+
+
+► Question
+
+For the example dataset count of Section 8.3, how does the output of DESeq2’s estimateSizeFactorsForMatrix compare to what you get by simply taking the column sums?
+
+```{r}
+ggplot(tibble(
+  `size factor` = estimateSizeFactorsForMatrix(counts),
+  `sum` = colSums(counts)), aes(x = `size factor`, y = `sum`)) +
+  geom_point()
+```
+
+
+► Task
+
+Locate the R sources for this book and have a look at the code that produces Figure 8.1.
+
+```{r}
+szfcDemo = data.frame(
+  x = c(2, 4, 6, 6,  8) * 10,
+  y = c(3, 6, 2, 9, 12) * 10,
+  name = LETTERS[1:5],
+  check.names = FALSE)
+slopes =  c(
+  blue = with(szfcDemo, sum(y) / sum(x)),
+  red = szfcDemo[, c("x", "y")] %>% as.matrix %>%
+    (DESeq2::estimateSizeFactorsForMatrix) %>% (function(x) x[2]/x[1]) %>% as.vector)
+ggplot(szfcDemo, aes(x = x, y = y, label = name)) + geom_point() +
+  coord_fixed() + xlim(c(0, 128)) + ylim(c(0, 128)) + xlab("sample 1") + ylab("sample 2") +
+  geom_text(hjust= 0.5, vjust = -0.6) +
+  geom_abline(slope = slopes[1], col = names(slopes)[1]) +
+  geom_abline(slope = slopes[2], col = names(slopes)[2])
+
+```
+
+► Question
+
+Plot the mean-variance relationship for the biological replicates in the pasilla dataset.
+
+```{r}
+library("ggplot2")
+library("matrixStats")
+sf = estimateSizeFactorsForMatrix(counts)
+ncounts  = counts / matrix(sf,
+   byrow = TRUE, ncol = ncol(counts), nrow = nrow(counts))
+uncounts = ncounts[, grep("^untreated", colnames(ncounts)),
+                     drop = FALSE]
+ggplot(tibble(
+        mean = rowMeans(uncounts),
+        var  = rowVars( uncounts)),
+     aes(x = log(mean), y = log(var))) +
+  geom_hex() + coord_fixed() + theme(legend.position = "none") +
+  geom_abline(slope = 1:2, color = c("forestgreen", "red"))
+```
+The green line is expected when mean equals the mean. The red line (slope 2) corresponds to the quadratic mean-variance relationship 
+$v=m^2$
+
+
+## 8.5 A basic analysis
+
+Load the pasilla data.
+```{r}
+annotationFile = system.file("extdata",
+  "pasilla_sample_annotation.csv",
+  package = "pasilla", mustWork = TRUE)
+pasillaSampleAnno = readr::read_csv(annotationFile)
+pasillaSampleAnno
+```
+
+Replace type column with underscores and and convert the type and condition columns into factors, explicitly specifying the prefered order of the levels.
+
+```{r}
+pasillaSampleAnno = mutate(pasillaSampleAnno,
+condition = factor(condition, levels = c("untreated", "treated")),
+type = factor(sub("-.*", "", type), levels = c("single", "paired")))
+
+with(pasillaSampleAnno,
+       table(condition, type))
+```
+
+Deseq2 uese _DESeqDataSet_ to store the datasets and related metadata.
+
+Create a DESeqDataSet from the count data matrix counts and the sample annotation dataframe pasillaSampleAnno.
+
+```{r}
+mt = match(colnames(counts), sub("fb$", "", pasillaSampleAnno$file))
+stopifnot(!any(is.na(mt)))
+
+
+pasilla = DESeqDataSetFromMatrix(
+  countData = counts,
+  colData   = pasillaSampleAnno[mt, ],
+  design    = ~ condition)
+class(pasilla)
+```
+
+► Question
+
+How can we access the row metadata of a SummarizedExperiment object, i.e., how can we read it out, how can we change it?
+
+```{r}
+colData(pasilla)
+```
+
+### 8.5.2 The DESeq2 method
+
+Runing the deseq function does three things;
+
+-*estimateSizeFactors* 
+
+-*estimateDispersions* 
+
+-*nbinomWaldTest*
+
+```{r}
+pasilla = DESeq(pasilla)
+#View the results
+res = results(pasilla)
+nrow(res)
+res[order(res$padj), ] %>% head
+```
+
+## 8.5.3 Exploring the results
+FOur exploraoty plots can b generated; can be e
+
+- Histogram of p-values 
+- MA plot
+- Ordination plot 
+
+```{r}
+#Histogram of p-values
+ggplot(as(res, "data.frame"), aes(x = pvalue)) +
+  geom_histogram(binwidth = 0.01, fill = "Royalblue", boundary = 0)
+```
+
+The dispersion can be observed as
+```{r}
+plotDispEsts(pasilla)
+```
+
+► Question
+
+If the histogram for your data is indicative of batch effects, what can you do?
+
+Ue sva or  RUVSeq to correct for the batch effects especially if they are not known.
+
+```{r}
+plotMA(pasilla, ylim = c( -2, 2))
+
+#PCA plot of the log transformed data
+pas_rlog = rlogTransformation(pasilla)
+plotPCA(pas_rlog, intgroup=c("condition", "type")) + coord_fixed()
+```
+
+```{r}
+#Heatmap
+library("pheatmap")
+select = order(rowMeans(assay(pas_rlog)), decreasing = TRUE)[1:30]
+pheatmap( assay(pas_rlog)[select, ],
+     scale = "row",
+     annotation_col = as.data.frame(
+        colData(pas_rlog)[, c("condition", "type")] ))
+```
+
+By default, pheatmap arranges the rows and columns of the matrix by the dendrogram from (unsupervised) clustering.
+
+```{r}
+#Explort results
+write.csv(as.data.frame(res), file = "treated_vs_untreated.csv")
+
+```
+
+## 8.6 Critique of default choices and possible modifications
+
+## 8.6.1 The few changes assumption
+
+
+► Task
+
+Run the DESeq2 workflow with size factors and dispersion parameters estimated only from a predefined subset of genes.
+
+```{r}
+
+pasilla = DESeqDataSetFromMatrix(
+  countData = counts,
+  colData   = pasillaSampleAnno[mt, ],
+  design    = ~ condition)
+class(pasilla)
+p= estimateSizeFactors(pasilla, controlGenes= (1:130))
+p1=estimateDispersions(p)
+p1=nbinomWaldTest(p1)
+res1=results(p1)
+nrow(res1)
+res[order(res1$padj), ] %>% head
+```
+
+There are differences in the p values
+
+## 8.7 Multi-factor designs and linear models
+
+### 8.7.1 What is a multifactorial design?
+
+This referes to experiments with more than one factor influencing the counts.
+
+## 8.7.4 Robustness
+
+► Question
+
+Plot the graph of the function proposed by Huber (1964) for M-estimators.
+```{r}
+rho = function(x, s)
+  ifelse(abs(x) < s, x^2 / 2,  s * abs(x) - s^2 / 2)
+
+df = tibble(
+  x        = seq(-7, 7, length.out = 100),
+  parabola = x ^ 2 / 2,
+  Huber    = rho(x, s = 2))
+
+ggplot(reshape2::melt(df, id.vars = "x"),
+  aes(x = x, y = value, col = variable)) + geom_line()
+```
+
+## 
+## 8.9 Two-factor analysis of the pasilla data
+
+Including the type and conditions into the design, a two factor formular, a two factor analysis with DESeq2 can be executed.
+
+```{r}
+pasillaTwoFactor = pasilla
+design(pasillaTwoFactor) = formula(~ type + condition)
+pasillaTwoFactor = DESeq(pasillaTwoFactor)
+
+#View the results
+res2 = results(pasillaTwoFactor)
+head(res2, n = 3)
+
+```
+
+Comparing the P-values from both the two factor and one factor analysis;
+```{r}
+trsf = function(x) ifelse(is.na(x), 0, (-log10(x)) ^ (1/6))
+ggplot(tibble(pOne = res$pvalue,
+              pTwo = res2$pvalue),
+    aes(x = trsf(pOne), y = trsf(pTwo))) +
+    geom_hex(bins = 75) + coord_fixed() +
+    xlab("Single factor analysis (condition)") +
+    ylab("Two factor analysis (type + condition)") +
+    geom_abline(col = "orange")
+```
+
+The p-values in the two-factor analysis are similar to those from the one-factor analysis, but are generally smaller.
+
+## Compare the p-values
+
+```{r}
+compareRes = table(
+   `simple analysis` = res$padj < 0.1,
+   `two factor` = res2$padj < 0.1 )
+addmargins( compareRes )
+```
+The two-factor analysis found 1325 genes differentially expressed at an FDR threshold of 10%, while the one-factor analysis found 1061.
+
+Without modeling the blocking factor, the variability in the data that is due to it has to be absorbed by the 
+$ε$s. This means that they are generally larger than in the model with the blocking factor.
+
+Not taking into account a blocking factor can also lead to the detection of more genes
+
+## 8.10 Further statistical concepts
+
+### 8.10.1 Sharing of dispersion information across genes
+
+-  DESeq2 uses an empirical Bayes approach for the estimation of the dispersion parameters with the priors taken from the distributions of the maximum-likelihood estimates (MLEs) across all genes
+
+
+## 8.10.2 Count data transformations
+
+Transformations are useful for downstream analysis and data exploration such as clustering.
+
+Common transformation approaches are;
+
+- logarithm transformation;
+$y=log2(n+1)$ or more generally, $y=log2(n+n_0)$
+where n represents the count values and $n_0$ is a somehow chosen positive constant.
+
+- Variance-stabilizing transformation
+
+```{r}
+vsp = varianceStabilizingTransformation(pasilla)
+
+```
+
+-Regularized logarithm (rlog) transformation
+
+
+
+Comparing vst and log2 transformation
+
+```{r}
+j = 1
+ggplot(tibble(
+         x    = assay(pasilla)[, j],
+         VST  = assay(vsp)[, j],
+         log2 = log2(assay(pasilla)[, j])) %>%
+             reshape2::melt(id.vars = "x"),
+       aes(x = x, y = value, col = variable)) +
+  geom_line() + xlim(c(0, 600)) + ylim(c(0, 9)) +
+  xlab("counts") + ylab("transformed")
+```
+
+## *VST* 
+It is conceptually distinct from variance stabilization in that it builds upon the shrinkage estimation.
+
+It works by transforming the original count data to a 
+$log_2$-like scale by fitting a “trivial” model with a separate term for each sample and a prior distribution on the coefficients which is estimated from the data.
+
+
+► Question
+
+Plot mean against standard deviation between replicates for the shifted logarithm ((8.17)), the regularized log transformation and the variance-stabilizing transformation.
+
+```{r}
+library("vsn")
+rlp = rlogTransformation(pasilla)
+
+msd = function(x)
+  meanSdPlot(x, plot = FALSE)$gg + ylim(c(0, 1)) +
+     theme(legend.position = "none")
+
+gridExtra::grid.arrange(
+  msd(log2(counts(pasilla, normalized = TRUE) + 1)) +
+    ylab("sd(log2)"),
+  msd(assay(vsp)) + ylab("sd(vst)"),
+  msd(assay(rlp)) + ylab("sd(rlog)"),
+  ncol = 3
+)
+
+```
+
+## 8.10.3 Dealing with outliers
+Outliers are extremly large counts
+They arise through;
+
+-rare technical or experimental artifacts
+
+-read mapping problems in the case of genetically differing samples, 
+
+-genuine, but rare biological events.
+
+
+In Deseq2;
+
+-The results function automatically flags genes which contain a Cook’s distance above a cutoff for samples which have 3 or more replicates. The p values and adjusted p values for these genes are set to NA.
+
+- When there are 7 or more replicates for a given sample, the DESeq function will automatically replace counts with large Cook’s distance with the trimmed mean over all samples, scaled up by the size factor or normalization factor for that sample. 
+
+- This outlier replacement only occurs when there are 7 or more replicates, and can be turned off with  _DESeq(dds, minReplicatesForReplace=Inf)_
+
+```{r}
+par(mar=c(8,5,2,2))
+boxplot(log10(assays(pasillaTwoFactor)[["cooks"]]), range=0, las=2)
+```
+
+## 8.10.4 Tests of $log_2$ fold change above or below a threshold
+
+To detect effects that have a strong enough size, as opposed to ones that are statistically significant, the _results_ function allow for threshold-based Wald tests: _lfcThreshold_, which takes a numeric of a non-negative threshold value, and _altHypothesis_ which specifies the kind of test.
+
+```{r}
+par(mfrow = c(4, 1), mar = c(2, 2, 1, 1))
+myMA = function(h, v, theta = 0.5) {
+  plotMA(pasilla, lfcThreshold = theta, altHypothesis = h,
+         ylim = c(-2.5, 2.5))
+  abline(h = v * theta, col = "dodgerblue", lwd = 2)
+}
+myMA("greaterAbs", c(-1, 1))
+myMA("lessAbs",    c(-1, 1))
+myMA("greater",          1)
+myMA("less",         -1   )
+
+```
+
+
+
+
+
+## Excercise
+
+```{r}
+Batch <- factor(c(1,2,2,1,1,2,2))
+condition = factor(pasillaSampleAnno$condition, levels = c("untreated", "treated"))
+design <- model.matrix(~ type + condition)
+dge <- DGEList(counts=counts)
+y <- calcNormFactors(dge)
+plotMDS(dge)
+y1 <- estimateDisp(y, design, robust=TRUE)
+y1$common.dispersion
+plotBCV(y1)
+
+#Generalized Linear Models with Quasi-likelihood Tests
+
+glmfit <- glmQLFit(y1, design, robust=TRUE)
+plotQLDisp(glmfit)
+results <- glmQLFTest(glmfit)
+topTags(results)
+is.de <- decideTests(results, p.value=0.05)
+summary(is.de)
+
+plotMD(results)
+abline(h=c(-1, 1), col="blue")
+
+
+##the glmLRT approach##
+#Conduct likelihood ratio tests for 1 vs 2 and show the top genes:
+#First fit genewise glms:
+fit1 <- glmFit(y1, design)
+lrt <- glmLRT(fit1)
+topTags(lrt)
+plotMD(lrt)
+abline(h=c(-1, 1), col="blue")
+#The total number of differentially expressed genes at 5% FDR is given by:
+summary(decideTests(lrt))
+```
+
+
