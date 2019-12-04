@@ -1,0 +1,538 @@
+---
+title: "Comparative evaluation of Differential Gene Expression Analyses Tools"
+author: "Abdul-Rahman Adamu Bukari"
+date: "11/11/2019"
+output:
+
+  html_document: default
+bibliography: biblio.bib
+---
+\DeclareUnicodeCharacter{2212}{-}
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library("pheatmap")
+library("tibble")
+library("compcodeR")
+library("here")
+library("ggplot2")
+library("RColorBrewer")
+library("affy")
+library("readr")
+library("DESeq2")
+library("apeglm")
+library("NOISeq")
+library("DEGseq")
+```
+
+## Introduction
+
+A crucial component of RNA sequence analysis is the statistical procedure used to call differentially expressed genes. Yet existing methods for differential gene expression analysis presume that count data follows specific distribution models (@huang2015differential). These baseline assumptions along with other downstream assumptions result in a list of differentially expressed genes with potentially differing accuracies which could affect downstream analysis such as functional enrichment analysis. Here, using simulated datasets, the accuracies of three DGE analysis tools (Deseq2, NOISeq, DEGseq) operating with different  models (Negative Binomial, Non-parametric and Binomial distributions respectively) will be assessed and the theoretical underpinnings of the differences in the outcomes will be explained.
+
+
+## Methods
+
+### Choice of data simulation tool
+
+There are at least 4 tools developed specifically for simulating RNAseq count data. Interestingly, all the tools simulate count data following a Negative-Binomial distribution. This is due to the over-dispertion recognized in real expression  datasets. Thus the variance of the expression values is larger than the mean values. This is a better alternative to the poison distributin which assumes no difference beteeen the mean and variance.
+
+[*simRNAseq*](https://rdrr.io/bioc/PROPER/man/simRNAseq.html) from PROPER
+
+[*sim.counts*](chrome-extension://cbnaodkpfinfiipjblikofhlhlcickei/src/pdfviewer/web/viewer.html?file=https://cran.r-project.org/web/packages/ssizeRNA/ssizeRNA.pdf) from ssizeRNA
+
+[*generateSyntheticData*](https://bioconductor.org/packages/release/bioc/manuals/compcodeR/man/compcodeR.pdf) from compcodeR
+
+[*make.sim.data.sd*](https://www.rdocumentation.org/packages/metaseqR/versions/1.12.2/topics/make.sim.data.sd) from metaseqR 
+
+The functions *generateSyntheticData* and *make.sim.data.sd* both work by generating synthetic RNA-seq count matrices, using the approaches described by @robles2012efficient and @soneson2013comparison. The *generateSyntheticData* function was used in simulating the synthetic data due to the extensive documentation that support the development of this function. Additionally, unlike *make.sim.data.sd* which samples from one real data, mean values can be sampled from values estimated from the both the Pickrell and Cheung datasets.
+
+
+### Data simulation
+
+Four simulated datasets (D1, D2, D3, D4) were generated using the same parameters to asses the consistency of the differential expression analysis tools. The simulated datasets contained 13000 gene counts with two groups (group1 and group2) of 5 replicates each, where 1300 of the genes were simulated to be differentially expressed between the two groups. The counts were also simulated with the same dispersion in the two groups, and no outlier counts were introduced. The datasets were then filtered by excluding all genes with total counts of 0. The differentially expressed genes were equally distributed between upregulated and downregulated genes.The *summarizeSynthetic* was then used to generate a  report summarizing the parameters that were used for the simulation in addition to some diagnostic plots.
+
+```{r, Data Simulation }
+#Run the simulation code
+D1 <- generateSyntheticData(dataset = "D1", n.vars = 13000,
+             samples.per.cond = 5, n.diffexp = 1300,repl.id = 1, seqdepth = 1e8,
+             fraction.upregulated = 0.5, between.group.diffdisp = FALSE,
+             filter.threshold.total = 1,filter.threshold.mediancpm = 0,
+             fraction.non.overdispersed = 0,output.file = "D1.rds")
+
+#extract the Truth set
+D1_truthset <- subset(D1@variable.annotations, differential.expression ==1)
+nrow(D1_truthset)
+write.csv(D1_truthset,'D1_truthset.csv')
+```
+
+```{r, Dataset2 }
+D2 <- generateSyntheticData(dataset = "D2", n.vars = 13000,
+             samples.per.cond = 5, n.diffexp = 1300,repl.id = 2, seqdepth = 1e8,
+             fraction.upregulated = 0.5, between.group.diffdisp = FALSE,
+             filter.threshold.total = 1,filter.threshold.mediancpm = 0,
+             fraction.non.overdispersed = 0,output.file = "D2.rds")
+D2_truthset <- subset(D2@variable.annotations, differential.expression ==1)
+nrow(D2_truthset)
+write.csv(D2_truthset,'D2_truthset.csv')
+```
+
+```{r, Dataset3}
+D3 <- generateSyntheticData(dataset = "D3", n.vars = 13000,
+             samples.per.cond = 5, n.diffexp = 1300,repl.id = 3, seqdepth = 1e8,
+             fraction.upregulated = 0.5, between.group.diffdisp = FALSE,
+             filter.threshold.total = 1,filter.threshold.mediancpm = 0,
+             fraction.non.overdispersed = 0,output.file = "D3.rds")
+D3_truthset <- subset(D3@variable.annotations, differential.expression ==1)
+nrow(D3_truthset)
+write.csv(D3_truthset,'D3_truthset.csv')
+
+```
+```{r, Dataset4}
+D4 <- generateSyntheticData(dataset = "D4", n.vars = 13000,
+             samples.per.cond = 5, n.diffexp = 1300,repl.id = 4, seqdepth = 1e8,
+             fraction.upregulated = 0.5, between.group.diffdisp = FALSE,
+             filter.threshold.total = 1,filter.threshold.mediancpm = 0,
+             fraction.non.overdispersed = 0,output.file = "D4.rds")
+
+D4_truthset <- subset(D4@variable.annotations, differential.expression ==1)
+nrow(D4_truthset)
+
+```
+
+```{r message=FALSE}
+# Extract the roownames to be used later for performance assesment
+write.csv(rownames(D4_truthset),'T1.csv')
+write.csv(rownames(D2_truthset),'T2.csv')
+write.csv(rownames(D3_truthset),'T3.csv')
+write.csv(rownames(D4_truthset),'T4.csv')
+
+#generate summary infromation about the plots
+#summarizeSyntheticDataSet(data.set = "D1.rds",output.filename = "D1_data_summary.html")
+#summarizeSyntheticDataSet(data.set = "D2.rds",output.filename = "D2_data_summary.html")
+#summarizeSyntheticDataSet(data.set = "D3.rds",output.filename = "D3_data_summary.html")
+#summarizeSyntheticDataSet(data.set = "D4.rds",output.filename = "D4_data_summary.html")
+
+
+```
+
+
+```{r Observe count raw count distribution}
+par(mfrow=c(2,2),oma = c(0, 0, 2, 0))
+plotDensity(D1@count.matrix, main = "D1", xlab = "Counts", col=1:20)
+legend("topright", colnames(D1@count.matrix),col=1:20,lwd=2,cex=0.30)
+
+plotDensity(D2@count.matrix, main = "D2", xlab = "Counts", col=1:20)
+legend("topright", colnames(D2@count.matrix),col=1:20,lwd=2,cex=0.30)
+
+plotDensity(D3@count.matrix, main = "D3", xlab = "Counts", col=1:20)
+legend("topright", colnames(D3@count.matrix),col=1:20,lwd=2,cex=0.30)
+
+
+plotDensity(D4@count.matrix, main = "D4", xlab = "Counts", col=1:20)
+legend("topright", colnames(D4@count.matrix),col=1:20,lwd=2,cex=0.30)
+```
+
+```{r message=FALSE}
+
+#Convert the dataset into an object that can be worked on by the vst function of Deseq2 package. This does not affect the data as the object created  has multiple slots including the original counts
+Metadata <- read.delim(here("Metadata.txt"))
+Metadata$Groups <- as.factor(Metadata$Groups)
+dds <- DESeqDataSetFromMatrix(D1@count.matrix, 
+                              colData = Metadata, 
+                              design = ~Groups)
+dds1 <- DESeq(dds)
+
+#Transform and plot the dataset
+vsd <- vst(dds1, blind=FALSE)
+head(assay(vsd), 3)
+sampleDists <- dist(t(assay(vsd)))
+
+sampleDistMatrix <- as.matrix(sampleDists)
+
+rownames(sampleDistMatrix) <- paste(vsd$SampleID)
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,show_rownames = T, show_colnames = T,
+         col=colors)
+
+plotPCA(vsd, intgroup=c("Groups"))
+
+```
+## Differential expression
+
+Three tools were compared; DESeq2, DEGseq, NOISeq. Analysis was executed by following the guidelines available in the manuals of these tools. In most cases, the default setting were followed except when there was a need to do otherwise.
+
+DESeq2: A DESeqDataSet object was created from the matrix of counts and metadata using DESeqDataSetFromMatrix function for counts data. The _*DESeq*_ function was then run on the object created to perform differential gene expression analysis. This was followed by building the results table using the results function. MA plots were then generated from the results obtained. Finally, selection of differentially expressed genes was done, genes with adjusted p-values of less than 0.05 were considered to be significantly differentially expressed genes.
+
+
+DEGseq: A DEGseq data object was created using *readGeneExp* function. The *DEGexp* function was then run on the object created to perform differential gene expression analysis with *thresholdKind* set to 3 (Benjamini adjusted q-value). As recomnedaded by the authors, no normalization method was selected. A graphical summary of the results was automatically generated. Finally,  genes with adjusted p-values less than 0.05 were considered to be significantly differentially expressed genes. 
+
+NOISeq:  *noiseq* was run on a noiseq genertaed object from the count matrix with the the trimmed mean of M normalization. A 0.8 threshold for the $q$ statsitic was then used to select differentially expressed genes.
+
+Using the truth dataset from the simulated dataset, performance mersures such as prescision, recall and F1-score were calculated. Venn diagrams were generated with [VennDiagrams](http://bioinformatics.psb.ugent.be/webtools/Venn/) online tool.
+
+```{r Deseq2, message=FALSE}
+# Create the DESeqDataSet object from Matrix of counts and metadata
+dds <- DESeqDataSetFromMatrix(D1@count.matrix, 
+                              colData = Metadata, 
+                              design = ~Groups)
+###Confirm that the rows of the deseq object is same as original data
+nrow(dds) 
+#Run DESeq function on the data to perform differential gene expression analysis
+dds1 <- DESeq(dds)
+
+##View the calculated size factors for each sample
+colData(dds1)
+
+# Build out results table
+res <- results(dds1)
+mcols(res , use.names=TRUE)
+#Get a quick summary of the results
+summary(res )
+#Number of genes with padj < 0.05
+sum(res$padj < 0.05, na.rm=TRUE)
+
+#MA Plot on before and after apeglm shrinkage"
+resLFC <- lfcShrink(dds1, coef=2, type="apeglm")
+par(mfrow=c(1,2))
+
+plotMA(res,main = "MA Plot of D1",xlab ="Mean of Normalised counts",
+       xlim=c(1,150000), ylim=c(-6,6))
+plotMA(resLFC, xlim=c(1,150000), ylim=c(-6,6),xlab="Mean of Normalised counts", main="apeglm")
+
+#Working with alpha 0.05
+res05_D1 <- results(dds1, alpha=0.05)
+summary(res05_D1)
+
+#You can select the gene to plot by rowname or by numeric index.
+par(mfrow=c(1,1))
+plotCounts(dds1, gene=which.min(res05_D1$padj), intgroup="Groups")
+
+#Select genes with padj < 0.05 
+resSig_D1 <- subset(res05_D1, padj < 0.05)
+nrow(resSig_D1)
+write.csv(resSig_D1,'DEseq2_D1_res.csv')
+
+
+
+#Do same for all four datasets
+##For D2
+dds2 <- DESeqDataSetFromMatrix(D2@count.matrix, 
+                              colData = Metadata, 
+                              design = ~Groups)
+nrow(dds2) 
+dds2 <- DESeq(dds2)
+colData(dds2)
+res2 <- results(dds2)
+mcols(res2 , use.names=TRUE)
+summary(res2 )
+sum(res2$padj < 0.05, na.rm=TRUE)
+resLFC2 <- lfcShrink(dds2, coef=2, type="apeglm")
+par(mfrow=c(1,2))
+plotMA(res2,main = "MA Plot of D2",xlab ="Mean of Normalised counts", xlim=c(1,150000), ylim=c(-6,6))
+plotMA(resLFC2, xlim=c(1,150000), ylim=c(-6,6),xlab="Mean of Normalised counts", main="apeglm")
+res05_D2 <- results(dds2, alpha=0.05)
+summary(res05_D2)
+par(mfrow=c(1,1))
+plotCounts(dds2, gene=which.min(res2$padj), intgroup="Groups")
+resSig_D2 <- subset(res05_D2, padj < 0.05)
+nrow(resSig_D2)
+write.csv(resSig_D2,'DEseq2_D2_res.csv')
+
+
+##For D3
+dds3 <- DESeqDataSetFromMatrix(D3@count.matrix, 
+                              colData = Metadata, 
+                              design = ~Groups)
+nrow(dds3) 
+dds3 <- DESeq(dds3)
+colData(dds3)
+res3 <- results(dds3)
+mcols(res3 , use.names=TRUE)
+summary(res3)
+sum(res3$padj < 0.05, na.rm=TRUE)
+resLFC3 <- lfcShrink(dds3, coef=2, type="apeglm")
+par(mfrow=c(1,2))
+plotMA(res3,main = "MA Plot of D3",xlab ="Mean of Normalised counts",
+       xlim=c(1,150000), ylim=c(-6,6))
+plotMA(resLFC3, xlim=c(1,150000), ylim=c(-6,6),xlab="Mean of Normalised counts", main="apeglm")
+res05_D3 <- results(dds3, alpha=0.05)
+summary(res05_D3)
+par(mfrow=c(1,1))
+plotCounts(dds3, gene=which.min(res3$padj), intgroup="Groups")
+resSig_D3 <- subset(res05_D3, padj < 0.05)
+nrow(resSig_D3)
+write.csv(resSig_D3,'DEseq2_D3_res.csv')
+
+
+##For D4
+dds4 <- DESeqDataSetFromMatrix(D4@count.matrix, 
+                              colData = Metadata, 
+                              design = ~Groups)
+nrow(dds4) 
+dds4 <- DESeq(dds4)
+colData(dds4)
+res4 <- results(dds4)
+mcols(res4 , use.names=TRUE)
+summary(res4 )
+sum(res4$padj < 0.05, na.rm=TRUE)
+resLFC4 <- lfcShrink(dds4, coef=2, type="apeglm")
+par(mfrow=c(1,2))
+plotMA(res4,main = "MA Plot of D4",xlab ="Mean of Normalised counts",
+       xlim=c(1,150000), ylim=c(-6,6))
+plotMA(resLFC4, xlim=c(1,150000), ylim=c(-6,6),xlab="Mean of Normalised counts", main="MA plot of apeglm Shrunk lfc")
+res05_D4 <- results(dds4, alpha=0.05)
+summary(res05_D4)
+par(mfrow=c(1,1))
+plotCounts(dds4, gene=which.min(res4$padj), intgroup="Groups")
+resSig_D4 <- subset(res05_D4, padj < 0.05)
+nrow(resSig_D4)
+write.csv(resSig_D4,'DEseq2_D4_res.csv')
+
+write.csv(rownames(resSig_D1),'DEseq2_T1.csv')
+write.csv(rownames(resSig_D2),'DEseq2_T2.csv')
+write.csv(rownames(resSig_D3),'DEseq2_T3.csv')
+write.csv(rownames(resSig_D4),'DEseq2_T4.csv')
+```
+
+
+
+```{r DEGseq, message=FALSE}
+layout(matrix(c(1,2,3,4,5,6), 3, 2, byrow=TRUE))
+par(mfrow=c(1,2),oma = c(0, 0, 2, 0))
+
+#write the datasets into formats readable by readGeneExp
+write.table(D1@count.matrix, file = "D1.csv")
+write.table(D2@count.matrix, file = "D2.csv")
+write.table(D3@count.matrix, file = "D3.csv")
+write.table(D4@count.matrix, file = "D4.csv")
+
+#Get a DEGseq object for both conditions(Groups)
+geneExpMatrixD1_1 <- readGeneExp(here("D1.csv"), geneCol=1, valCol=c(2,3,4,5))
+geneExpMatrixD1_2 <- readGeneExp(here("D1.csv"), geneCol=1, valCol=c(6,7,8,9))
+
+geneExpMatrixD2_1 <- readGeneExp(here("D2.csv"), geneCol=1, valCol=c(2,3,4,5))
+geneExpMatrixD2_2 <- readGeneExp(here("D2.csv"), geneCol=1, valCol=c(6,7,8,9))
+
+geneExpMatrixD3_1 <- readGeneExp(here("D3.csv"), geneCol=1, valCol=c(2,3,4,5))
+geneExpMatrixD3_2 <- readGeneExp(here("D3.csv"), geneCol=1, valCol=c(6,7,8,9))
+
+geneExpMatrixD4_1 <- readGeneExp(here("D4.csv"), geneCol=1, valCol=c(2,3,4,5))
+geneExpMatrixD4_2 <- readGeneExp(here("D4.csv"), geneCol=1, valCol=c(6,7,8,9))
+
+
+#Run DEGseq for all the datasets and save the results of various object
+DEGexp <- DEGexp(geneExpMatrix1= geneExpMatrixD1_1, groupLabel1="Group1",depth1= 1e7, depth2=1e7, geneExpMatrix2 = geneExpMatrixD1_2 , groupLabel2="Group2", thresholdKind=3, qValue = 0.05, outputDir = here("DEGseq_D1"))
+DEGseq_D1 <- read.table(here("DEGseq_D1","output_score.txt"), header=TRUE)
+DEGseq_D1_res <- subset(DEGseq_D1, Signature.q.value.Benjamini.et.al..1995....0.05. ==TRUE)
+nrow(DEGseq_D1_res)
+write.csv(DEGseq_D1_res,'DEGseq_D1_res.csv')
+
+DEGexp <- DEGexp(geneExpMatrix1= geneExpMatrixD2_1, groupLabel1="Group1", depth1= 1e7, depth2=1e7, geneExpMatrix2 = geneExpMatrixD2_2 , groupLabel2="Group2", thresholdKind=3, qValue = 0.05, outputDir = here("DEGseq_D2"))
+DEGseq_D2 <- read.table(here("DEGseq_D2","output_score.txt"), header=TRUE)
+DEGseq_D2_res <- subset(DEGseq_D2, Signature.q.value.Benjamini.et.al..1995....0.05. ==TRUE)
+nrow(DEGseq_D2_res)
+write.csv(DEGseq_D2_res,'DEGseq_D2_res.csv')
+
+DEGexp <- DEGexp(geneExpMatrix1= geneExpMatrixD3_1, groupLabel1="Group1", depth1= 1e7, depth2=1e7, geneExpMatrix2 = geneExpMatrixD3_2 , groupLabel2="Group2", thresholdKind=3, qValue = 0.05, outputDir = here("DEGseq_D3"))
+DEGseq_D3 <- read.table(here("DEGseq_D3","output_score.txt"), header=TRUE)
+DEGseq_D3_res <- subset(DEGseq_D3, Signature.q.value.Benjamini.et.al..1995....0.05. ==TRUE)
+nrow(DEGseq_D3_res)
+write.csv(DEGseq_D3_res,'DEGseq_D3_res.csv')
+
+DEGexp <- DEGexp(geneExpMatrix1= geneExpMatrixD4_1, groupLabel1="Group1", depth1= 1e7, depth2=1e7, geneExpMatrix2 = geneExpMatrixD4_2 , groupLabel2="Group2", thresholdKind=3, qValue = 0.05, outputDir = here("DEGseq_D4"))
+DEGseq_D4 <- read.table(here("DEGseq_D4","output_score.txt"), header=TRUE)
+DEGseq_D4_res <- subset(DEGseq_D4, Signature.q.value.Benjamini.et.al..1995....0.05. ==TRUE)
+nrow(DEGseq_D4_res)
+write.csv(DEGseq_D4_res,'DEGseq_D4_res.csv')
+
+View(DEGseq_D4)
+write.csv(DEGseq_D1_res$GeneNames,row.names =FALSE, col.names = NA ,'DEGseq_T1.csv')
+write.csv(DEGseq_D2_res$GeneNames,row.names =FALSE, col.names = NA ,'DEGseq_T2.csv')
+write.csv(DEGseq_D3_res$GeneNames,row.names =FALSE, col.names = NA ,'DEGseq_T3.csv')
+write.csv(DEGseq_D4_res$GeneNames,row.names =FALSE, col.names = NA ,'DEGseq_T4.csv')
+```
+
+```{r NOISeq}
+
+#Generate Noiseq input objects with defined metadata
+write.table(Metadata, file = "Metadata.csv")
+NoiseqD1 <- readData(data=D1@count.matrix, factors = read.table(here("Metadata.csv")))
+NoiseqD2 <- readData(data=D2@count.matrix, factors = read.table(here("Metadata.csv")))
+NoiseqD3 <- readData(data=D3@count.matrix, factors = read.table(here("Metadata.csv")))
+NoiseqD4 <- readData(data=D4@count.matrix, factors = read.table(here("Metadata.csv")))
+
+#run noiseq, obtain DEG and generate a plot 
+mynoiseq_D1 = noiseq(NoiseqD1,norm="tmm",factor = "Groups")
+NoiseqD1_res <- degenes(mynoiseq_D1, q = 0.80, M = NULL)
+write.csv(NoiseqD1_res,'NoiseqD1_res.csv')
+DE.plot(mynoiseq_D1, q = 0.8, graphic = "MD", main="mynoiseq_D1")
+
+
+mynoiseq_D2 = noiseq(NoiseqD2,factor = "Groups",norm="tmm")
+NoiseqD2_res <- degenes(mynoiseq_D2, q = 0.80, M = NULL)
+write.csv(NoiseqD2_res,'NoiseqD2_res.csv')
+DE.plot(mynoiseq_D2, q = 0.8, graphic = "MD", main="mynoiseq_D2")
+
+mynoiseq_D3 = noiseq(NoiseqD3,factor = "Groups",norm="tmm")
+NoiseqD3_res <- degenes(mynoiseq_D3, q = 0.80, M = NULL)
+write.csv(NoiseqD3_res,'NoiseqD3_res.csv')
+DE.plot(mynoiseq_D3, q = 0.8, graphic = "MD", main="mynoiseq_D3")
+
+mynoiseq_D4 = noiseq(NoiseqD4,factor = "Groups",norm="tmm")
+NoiseqD4_res <- degenes(mynoiseq_D4, q = 0.80, M = NULL)
+write.csv(NoiseqD4_res,'NoiseqD4_res.csv')
+DE.plot(mynoiseq_D4, q = 0.8, graphic = "MD", main="NOISeq_D4")
+nrow(NoiseqD1_res)
+nrow(NoiseqD2_res)
+nrow(NoiseqD3_res)
+nrow(NoiseqD4_res)
+write.csv(rownames(NoiseqD1_res),'NoiseqD1_T1.csv')
+write.csv(rownames(NoiseqD2_res),'NoiseqD1_T2.csv')
+write.csv(rownames(NoiseqD3_res),'NoiseqD1_T3.csv')
+write.csv(rownames(NoiseqD4_res),'NoiseqD1_T4.csv')
+```
+## Results
+
+The simulated reads depicted the characteristic distribution observed of RNA-seq count data. 
+
+### Performance meassures
+
+The performance of the tools were based on three measures; Prescision, Recall (specificity) and F1-score. 
+
+$Prescision= \frac{True Postive}{True Positives + False Positives}$
+
+$Recall= \frac{True Postive}{True Positives + False Negatives}$
+
+$F1 Score = 2*\frac{Recall * Precision}{Recall + Precision}$
+
+Overall, DEseq2 producded the best performance (F1-score) with a good levareage between prescision and recall (specificity). 
+DEGseq recorded the highest recall with the least prescision. The high fasle positive calls by DEGseq is responsible for the degraded prescision and subsequently the least F1-score. Although NOISeq was equally presice as DEseq2, the poor recall lead to a degraded F1-score.
+
+
+```{r out.width = '33%'}
+par(mfrow=c(2,2))
+knitr::include_graphics(c(here("D1venn_result.png"),here("D2venn_result.png"),here("D3venn_result.png"),here("D4venn_result.png")))
+```
+
+
+
+
+```{r, Performance measures, fig.cap="Performance measures of the tools"}
+#Extract the true positives, false negatives and fasle positives to calculate the average prescision, recall and specificity using the venn diagrames
+Tools = rep(c("DESeq2","DEGseq",
+              "NOISeq"),3)
+
+
+Precision  = c(0.836550585,
+0.098348461,
+0.790398673)
+
+Recall = c(0.47691982,
+0.834744478,
+0.147367798)
+
+F1Score = c(0.612968476,
+0.1763581,
+0.258616348)
+
+Performace_measures <-c(Precision, Recall, F1Score)
+type <-c(rep("Precision", 3), rep("Recall", 3),rep("F1Score", 3))
+mydata <-data.frame(Tools, Performace_measures)
+sdev <- c(0.019350095,
+          0.001178943,
+          0.006497606, 0.020722494,
+          0.014285714,
+          0.013458174, 0.018337634,
+          0.00219842,
+          0.019011926)
+
+mydata <-data.frame(Tools, Performace_measures,sdev)
+p <-ggplot(mydata, aes(Tools, Performace_measures))
+p +geom_bar(stat = "identity", aes(fill = type), position = "dodge", width=0.7)
+```
+
+## Discussion
+The differences seen with these three tools may be explained by the different approaches taken by these tools in the individual steps of the differential gene expression analyses. here, an explaination of the different approaches employed by these tools in each of the tools is given. 
+
+Differential expression analysis is manily made up of three steps;
+
+- Count Normalization
+
+- Parameter estimation of the statistical model 
+
+- Test for diffferential expresion
+
+### Count Normalization
+
+The first step in the DE analysis workflow is count normalization, which is necessary to make accurate comparisons of gene expression between samples. Normalization is the process of scaling raw count values to account for the “uninteresting” factors such as sequencing depth, gene length and RNA composition. Normalization procedures attempt to account for such differences to facilitate accurate comparisons between sample groups. While this is essential for differential expression analyses, it is also necessary for exploratory data analysis, visualization of data, and whenever you are exploring or comparing counts between or within samples.
+
+Deseq2 employs the Median of ratios via the *estimateSizeFactors()* and *sizeFactors()* functions which are automatically incorporated in the *DESeq* function. In it implementation, counts are are divided by sample-specific size factors determined by median ratio of gene counts relative to geometric mean per gene (@anders2010differential).
+
+$\hat{s}_j = median_i \frac{k_{ij} } {(\prod_{v = 1}^{m}K_{iv})^ \frac{1}{m}}$
+
+NOISeq uses a sligthly different normalization scalling called the Trimmed mean of M. This calculates a scaling factor between two experiments by using the weighted average of the log expression ratios of the subset of genes after excluding genes that exhibit high average read counts and genes that have large differences in expression (@robinson2010scaling).
+
+$M_g = log_2 \frac{Y_gk/N_k} {Y_gk^,/N_k^,}$
+
+$A_g = \frac{1}{2}log_2 {Y_gk/N_k}*{Y_gk^,/N_k^,}$ 
+
+Both approaches  are based on strong assumptions that most genes are not differentially expressed, and that for those differentially expressed there is an approximately balanced proportion of over- and under-expression. These two approaches to normalization have been found to provide comparable performance (@dillies2013comprehensive).
+
+With DEGseq, no normalization approach was selected per strong recommendation by the developers. In fact specifying a trimmed mean of count rather  degraded the performance with extreamly high false positives. The lack of a suitable normalization could explain the degraded results obtained for DEGseq. 
+
+
+### Parameter estimation of the statistical model and Test for diffferential expresion
+
+The goal of a DE analysis is to highlight genes that have changed significantly in abundance across experimental conditions. In general, this means taking a table of summarized count data for each library and performing statistical testing between samples of interest. The models proposed by these tools is a way to approximate how the data behaves given a set of parameters (i.e. size factor, dispersion). This requires that an assumptions of the distribution of the count data is made and modelled accordinly to estimate the the parameters of the distribution.
+
+Deseq2 models the normalized count data as a Generalized Linear Model of a Negative Binomial distribution with a log link. The assumption of a NB distribution inspired by the percieved overdispersion (variance > mean) among biological replicates of count data. This involves estimating the gene-wise dispersions and shrinking these estimates to generate more accurate estimates of dispersion to model the counts. The The Wald test is then used as a statistical test for differenctial expression and the p values are adjusted for multiple testing using the procedure of Benjamini and Hochberg (@benjamini1995controlling).
+
+
+$K_{ij}∼NB(μ_{ij},α_{i})$
+ 
+$μ_{ij}=s_{j}q_{ij}$
+
+$log_{2}(q_{ij})=x{j}.β{i}$
+
+$Var(K_{ij})=μ_{ij}+α_iμ^2_{ij}$
+ 
+ 
+DEGseq on the other hand models the counts as a bionomial distribution which can be approximated by a Poisson distribution (@jiang2009statistical). This is based on the assumption that RNA sequencing could be modeled as a random sampling process, in which each read is sampled independently and uniformly from every possible nucleotide in the sample. The process is based on MA plots. Given that $C1$ and $C$2 denote the counts of reads mapped to a specific gene obtained from two replicates groups, with $Ci ∼ binomial (ni, pi), i = 1, 2..n$ where $n_i$ denotes the total number of mapped reads and $pi$ the probability of a read coming from that gene; $M = log2C1- log2C2$, and $A = (log_2C_1 + log_2C_2)/2$. Through a series of MA plots, a z-score can be estimated which is futher used in calculating a p-value during hypothesis testing via the likloihood ratio test. The binomial distribution may not be optimal for RNAseq count data as the dispersion parameter (standard deviation) may not be a good metric.
+
+NOISeq adopts a nonparametric approach for  detecting differentially expressed genes from count data. NOISeq basically creates a null or noise distribution of count changes by contrasting fold-change differences (M) and absolute expression differences (D) for all the genes in samples within the same condition. This reference distribution is then used to assess whether the (M, D) values computed between two conditions for a given gene are likely to be part of the noise or represent a true differential expression
+
+- Pseudocount generation and summarization
+
+$\tilde{y}_{gk}=y_{gk_i}×10^6/m_i$
+
+$\tilde{y}_{gk}=∑i_{∈Ck}\tilde{y_{gi}}$
+
+Calculation of Log ratio (L) and Absolute value difference (D)
+
+$L = log_2 \frac {\tilde{y}_gC_1}{\tilde{y}_gC_2)}$
+
+$D=|\tilde{y}_gC_1−\tilde{y}_gC_2|$
+
+where C1 and C2 denote group 1 and 2, respectively.
+
+Null hypothesis: L and D values are no different than noise if not DE. This is tested via the Wilcoxon test.
+
+Probability distribution for random variables $L*$ and $D*$ are estimated as noise
+
+Probability of being differentially expresssed is estimated and a predifined odds ratio used to decide whether a gene is differentially expressed between the two conditions or not. 
+
+This approach makes NOISeq robust maintaining a high true-positive rate. This pursurance of  high true-positive rate leads to high false negatives (@huang2015differential), thus leading to what was observed in this study. 
+
+## Conclusion
+
+Here, it is shown that the approached adopted by various differential expression analyses tool at each stage of the analysis is crucial. Reserchers indending to use these tools should have a good idea of the normalization, distribution and hypothesis testing approach suitable for their data. This knowledge in addition to the experimental design should then inform the appropriate analysis packe to employ. This can be achieved  by doing a series of exploratory anaysis to analyze the  distribution of the data.
+
+We have shown that count data from a pairwise experimental design with replicates following a binomial distribution (as is often seen of RNA-seq count data)   
+ 
+## References
