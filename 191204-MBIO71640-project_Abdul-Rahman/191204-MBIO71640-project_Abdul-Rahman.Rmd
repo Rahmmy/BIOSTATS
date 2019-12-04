@@ -3,7 +3,6 @@ title: "Comparative evaluation of Differential Gene Expression Analyses Tools"
 author: "Abdul-Rahman Adamu Bukari"
 date: "11/11/2019"
 output:
-
   html_document: default
 bibliography: biblio.bib
 ---
