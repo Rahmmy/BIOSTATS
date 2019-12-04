@@ -320,6 +320,22 @@ write.csv(as.data.frame(res), file = "treated_vs_untreated.csv")
 
 ## 8.6 Critique of default choices and possible modifications
 
+### 8.6.1 Few changes assumption
+
+Underlying the default normalization and the dispersion estimation in DESeq2 (and many other differential expression methods) is that most genes are not differentially expressed.
+
+
+What to do if assumption is not correct?
+
+    - Solution: Don't apply operations on all genes
+    
+    - identify subset of -ve control genes which we belive the assumption holds
+    
+    - because prior knowledge or controlled abundance as external "spike in" (PhiX) as used in MACQ2 experiment.
+        
+*NB: For the normalization, although not for the dispersion estimation, one can slightly relax this assumption: it is still valid if many genes are changing, but in a way that is balanced between up- and downward directions*.
+
+
 ## 8.6.1 The few changes assumption
 
 
@@ -346,9 +362,11 @@ There are differences in the p values
 
 ## 8.7 Multi-factor designs and linear models
 
+These refer to experiments where more than one condition are assessed. this will require an extension of the linear model to accommodate all factors.
+
 ### 8.7.1 What is a multifactorial design?
 
-This referes to experiments with more than one factor influencing the counts.
+This refers to experiments with more than one factor influencing the counts.
 
 ## 8.7.4 Robustness
 
@@ -368,10 +386,10 @@ ggplot(reshape2::melt(df, id.vars = "x"),
   aes(x = x, y = value, col = variable)) + geom_line()
 ```
 
-## 
+
 ## 8.9 Two-factor analysis of the pasilla data
 
-Including the type and conditions into the design, a two factor formular, a two factor analysis with DESeq2 can be executed.
+Including the type and conditions into the design, a two factor formula, a two factor analysis with DESeq2 can be executed.
 
 ```{r}
 pasillaTwoFactor = pasilla
@@ -485,7 +503,7 @@ gridExtra::grid.arrange(
 ```
 
 ## 8.10.3 Dealing with outliers
-Outliers are extremly large counts
+Outliers are extremely large counts
 They arise through;
 
 -rare technical or experimental artifacts
@@ -530,12 +548,12 @@ myMA("less",         -1   )
 
 
 
-## Excercise
+## Exercise
 
 ```{r}
 pasillaEdge1 <- DGEList(counts=counts, sample = pasillaSampleAnno[mt,], group=pasillaSampleAnno$condition)
-design <- model.matrix(~ condition, pasillaEdge$samples)
-class(pasillaEdge)
+design <- model.matrix(~ condition, pasillaEdge1$samples)
+class(pasillaEdge1)
 y <- calcNormFactors(pasillaEdge1, method="TMM")
 plotMDS(pasillaEdge1)
 y1 <- estimateDisp(y, design, robust=TRUE)
@@ -597,5 +615,5 @@ ggplot(tibble(QLF = results$table$PValue,
     geom_abline(col = "orange")
 
 ```
-
-
+There are  variations at lower P-values but similar at higher values.    
+## References
