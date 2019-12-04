@@ -9,6 +9,7 @@ bibliography: biblio.bib
 body {
 text-align: justify}
 </style>
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
