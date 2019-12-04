@@ -36,7 +36,7 @@ A crucial component of RNA sequence analysis is the statistical procedure used t
 
 ### Choice of data simulation tool
 
-There are at least 4 tools developed specifically for simulating RNAseq count data. Interestingly, all the tools simulate count data following a Negative-Binomial distribution. This is due to the over-dispertion recognized in real expression  datasets. Thus the variance of the expression values is larger than the mean values. This is a better alternative to the poison distributin which assumes no difference beteeen the mean and variance.
+There are at least 4 tools developed specifically for simulating RNAseq count data. Interestingly, all the tools simulate count data following a Negative-Binomial distribution. This is due to the over-dispertion recognized in real expression  datasets. Thus the variance of the expression values is larger than the mean values. This is a better alternative to the poison distribution which assumes no difference between the mean and variance.
 
 [*simRNAseq*](https://rdrr.io/bioc/PROPER/man/simRNAseq.html) from PROPER
 
@@ -169,11 +169,11 @@ Three tools were compared; DESeq2, DEGseq, NOISeq. Analysis was executed by foll
 DESeq2: A DESeqDataSet object was created from the matrix of counts and metadata using DESeqDataSetFromMatrix function for counts data. The _*DESeq*_ function was then run on the object created to perform differential gene expression analysis. This was followed by building the results table using the results function. MA plots were then generated from the results obtained. Finally, selection of differentially expressed genes was done, genes with adjusted p-values of less than 0.05 were considered to be significantly differentially expressed genes.
 
 
-DEGseq: A DEGseq data object was created using *readGeneExp* function. The *DEGexp* function was then run on the object created to perform differential gene expression analysis with *thresholdKind* set to 3 (Benjamini adjusted q-value). As recomnedaded by the authors, no normalization method was selected. A graphical summary of the results was automatically generated. Finally,  genes with adjusted p-values less than 0.05 were considered to be significantly differentially expressed genes. 
+DEGseq: A DEGseq data object was created using *readGeneExp* function. The *DEGexp* function was then run on the object created to perform differential gene expression analysis with *thresholdKind* set to 3 (Benjamini adjusted q-value). As recommended by the authors, no normalization method was selected. A graphical summary of the results was automatically generated. Finally,  genes with adjusted p-values less than 0.05 were considered to be significantly differentially expressed genes. 
 
 NOISeq:  *noiseq* was run on a noiseq genertaed object from the count matrix with the the trimmed mean of M normalization. A 0.8 threshold for the $q$ statsitic was then used to select differentially expressed genes.
 
-Using the truth dataset from the simulated dataset, performance mersures such as prescision, recall and F1-score were calculated. Venn diagrams were generated with [VennDiagrams](http://bioinformatics.psb.ugent.be/webtools/Venn/) online tool.
+Using the truth dataset from the simulated dataset, performance measures such as precision, recall and F1-score were calculated. Venn diagrams were generated with [VennDiagrams](http://bioinformatics.psb.ugent.be/webtools/Venn/) online tool.
 
 ```{r Deseq2, message=FALSE}
 # Create the DESeqDataSet object from Matrix of counts and metadata
@@ -402,7 +402,7 @@ The simulated reads depicted the characteristic distribution observed of RNA-seq
 
 ### Performance meassures
 
-The performance of the tools were based on three measures; Prescision, Recall (specificity) and F1-score. 
+The performance of the tools were based on three measures; Precision, Recall (specificity) and F1-score. 
 
 $Prescision= \frac{True Postive}{True Positives + False Positives}$
 
@@ -410,8 +410,8 @@ $Recall= \frac{True Postive}{True Positives + False Negatives}$
 
 $F1 Score = 2*\frac{Recall * Precision}{Recall + Precision}$
 
-Overall, DEseq2 producded the best performance (F1-score) with a good levareage between prescision and recall (specificity). 
-DEGseq recorded the highest recall with the least prescision. The high fasle positive calls by DEGseq is responsible for the degraded prescision and subsequently the least F1-score. Although NOISeq was equally presice as DEseq2, the poor recall lead to a degraded F1-score.
+Overall, DEseq2 produced the best performance (F1-score) with a good leverage between precision and recall (specificity). 
+DEGseq recorded the highest recall with the least precision. The high facile positive calls by DEGseq is responsible for the degraded precision and subsequently the least F1-score. Although NOISeq was equally precise as DEseq2, the poor recall lead to a degraded F1-score.
 
 
 ```{r out.width = '33%'}
@@ -457,15 +457,15 @@ p +geom_bar(stat = "identity", aes(fill = type), position = "dodge", width=0.7)
 ```
 
 ## Discussion
-The differences seen with these three tools may be explained by the different approaches taken by these tools in the individual steps of the differential gene expression analyses. here, an explaination of the different approaches employed by these tools in each of the tools is given. 
+The differences seen with these three tools may be explained by the different approaches taken by these tools in the individual steps of the differential gene expression analyses. here, an explanation of the different approaches employed by these tools in each of the tools is given. 
 
-Differential expression analysis is manily made up of three steps;
+Differential expression analysis is mainly made up of three steps;
 
 - Count Normalization
 
 - Parameter estimation of the statistical model 
 
-- Test for diffferential expresion
+- Test for differential expression
 
 ### Count Normalization
 
@@ -475,7 +475,7 @@ Deseq2 employs the Median of ratios via the *estimateSizeFactors()* and *sizeFac
 
 $\hat{s}_j = median_i \frac{k_{ij} } {(\prod_{v = 1}^{m}K_{iv})^ \frac{1}{m}}$
 
-NOISeq uses a sligthly different normalization scalling called the Trimmed mean of M. This calculates a scaling factor between two experiments by using the weighted average of the log expression ratios of the subset of genes after excluding genes that exhibit high average read counts and genes that have large differences in expression (@robinson2010scaling).
+NOISeq uses a slightly different normalization scaling called the Trimmed mean of M. This calculates a scaling factor between two experiments by using the weighted average of the log expression ratios of the subset of genes after excluding genes that exhibit high average read counts and genes that have large differences in expression (@robinson2010scaling).
 
 $M_g = log_2 \frac{Y_gk/N_k} {Y_gk^,/N_k^,}$
 
@@ -483,14 +483,14 @@ $A_g = \frac{1}{2}log_2 {Y_gk/N_k}*{Y_gk^,/N_k^,}$
 
 Both approaches  are based on strong assumptions that most genes are not differentially expressed, and that for those differentially expressed there is an approximately balanced proportion of over- and under-expression. These two approaches to normalization have been found to provide comparable performance (@dillies2013comprehensive).
 
-With DEGseq, no normalization approach was selected per strong recommendation by the developers. In fact specifying a trimmed mean of count rather  degraded the performance with extreamly high false positives. The lack of a suitable normalization could explain the degraded results obtained for DEGseq. 
+With DEGseq, no normalization approach was selected per strong recommendation by the developers. In fact specifying a trimmed mean of count rather  degraded the performance with extremely high false positives. The lack of a suitable normalization could explain the degraded results obtained for DEGseq. 
 
 
-### Parameter estimation of the statistical model and Test for diffferential expresion
+### Parameter estimation of the statistical model and Test for differential expression
 
-The goal of a DE analysis is to highlight genes that have changed significantly in abundance across experimental conditions. In general, this means taking a table of summarized count data for each library and performing statistical testing between samples of interest. The models proposed by these tools is a way to approximate how the data behaves given a set of parameters (i.e. size factor, dispersion). This requires that an assumptions of the distribution of the count data is made and modelled accordinly to estimate the the parameters of the distribution.
+The goal of a DE analysis is to highlight genes that have changed significantly in abundance across experimental conditions. In general, this means taking a table of summarized count data for each library and performing statistical testing between samples of interest. The models proposed by these tools is a way to approximate how the data behaves given a set of parameters (i.e. size factor, dispersion). This requires that an assumptions of the distribution of the count data is made and modeled accordingly to estimate the the parameters of the distribution.
 
-Deseq2 models the normalized count data as a Generalized Linear Model of a Negative Binomial distribution with a log link. The assumption of a NB distribution inspired by the percieved overdispersion (variance > mean) among biological replicates of count data. This involves estimating the gene-wise dispersions and shrinking these estimates to generate more accurate estimates of dispersion to model the counts. The The Wald test is then used as a statistical test for differenctial expression and the p values are adjusted for multiple testing using the procedure of Benjamini and Hochberg (@benjamini1995controlling).
+Deseq2 models the normalized count data as a Generalized Linear Model of a Negative Binomial distribution with a log link. The assumption of a NB distribution inspired by the perceived over dispersion (variance > mean) among biological replicates of count data. This involves estimating the gene-wise dispersion and shrinking these estimates to generate more accurate estimates of dispersion to model the counts. The The Wald test is then used as a statistical test for differential expression and the p values are adjusted for multiple testing using the procedure of Benjamini and Hochberg (@benjamini1995controlling).
 
 
 $K_{ij}∼NB(μ_{ij},α_{i})$
@@ -502,11 +502,11 @@ $log_{2}(q_{ij})=x{j}.β{i}$
 $Var(K_{ij})=μ_{ij}+α_iμ^2_{ij}$
  
  
-DEGseq on the other hand models the counts as a bionomial distribution which can be approximated by a Poisson distribution (@jiang2009statistical). This is based on the assumption that RNA sequencing could be modeled as a random sampling process, in which each read is sampled independently and uniformly from every possible nucleotide in the sample. The process is based on MA plots. Given that $C1$ and $C$2 denote the counts of reads mapped to a specific gene obtained from two replicates groups, with $Ci ∼ binomial (ni, pi), i = 1, 2..n$ where $n_i$ denotes the total number of mapped reads and $pi$ the probability of a read coming from that gene; $M = log2C1- log2C2$, and $A = (log_2C_1 + log_2C_2)/2$. Through a series of MA plots, a z-score can be estimated which is futher used in calculating a p-value during hypothesis testing via the likloihood ratio test. The binomial distribution may not be optimal for RNAseq count data as the dispersion parameter (standard deviation) may not be a good metric.
+DEGseq on the other hand models the counts as a binomial distribution which can be approximated by a Poisson distribution (@jiang2009statistical). This is based on the assumption that RNA sequencing could be modeled as a random sampling process, in which each read is sampled independently and uniformly from every possible nucleotide in the sample. The process is based on MA plots. Given that $C1$ and $C2$ denote the counts of reads mapped to a specific gene obtained from two replicates groups, with $Ci ∼ binomial (ni, pi), i = 1, 2..n$ where $n_i$ denotes the total number of mapped reads and $pi$ the probability of a read coming from that gene; $M = log2C1- log2C2$, and $A = (log_2C_1 + log_2C_2)/2$. Through a series of MA plots, a z-score can be estimated which is further used in calculating a p-value during hypothesis testing via the likelihood ratio test. The binomial distribution may not be optimal for RNAseq count data as the dispersion parameter (standard deviation) may not be a good metric.
 
-NOISeq adopts a nonparametric approach for  detecting differentially expressed genes from count data. NOISeq basically creates a null or noise distribution of count changes by contrasting fold-change differences (M) and absolute expression differences (D) for all the genes in samples within the same condition. This reference distribution is then used to assess whether the (M, D) values computed between two conditions for a given gene are likely to be part of the noise or represent a true differential expression
+NOISeq adopts a non parametric approach for  detecting differentially expressed genes from count data. NOISeq basically creates a null or noise distribution of count changes by contrasting fold-change differences (M) and absolute expression differences (D) for all the genes in samples within the same condition. This reference distribution is then used to assess whether the (M, D) values computed between two conditions for a given gene are likely to be part of the noise or represent a true differential expression.
 
-- Pseudocount generation and summarization
+*Pseudocount generation and summarization*
 
 $\tilde{y}_{gk}=y_{gk_i}×10^6/m_i$
 
@@ -518,20 +518,20 @@ $L = log_2 \frac {\tilde{y}_gC_1}{\tilde{y}_gC_2)}$
 
 $D=|\tilde{y}_gC_1−\tilde{y}_gC_2|$
 
-where C1 and C2 denote group 1 and 2, respectively.
+where $C1$ and $C2$ denote group 1 and 2, respectively.
 
 Null hypothesis: L and D values are no different than noise if not DE. This is tested via the Wilcoxon test.
 
 Probability distribution for random variables $L*$ and $D*$ are estimated as noise
 
-Probability of being differentially expresssed is estimated and a predifined odds ratio used to decide whether a gene is differentially expressed between the two conditions or not. 
+Probability of being differentially expressed is estimated and a predefined odds ratio used to decide whether a gene is differentially expressed between the two conditions or not. 
 
-This approach makes NOISeq robust maintaining a high true-positive rate. This pursurance of  high true-positive rate leads to high false negatives (@huang2015differential), thus leading to what was observed in this study. 
+This approach makes NOISeq robust maintaining a high true-positive rate. This pursuance of  high true-positive rate leads to high false negatives (@huang2015differential), thus leading to what was observed in this study. 
 
 ## Conclusion
 
-Here, it is shown that the approached adopted by various differential expression analyses tool at each stage of the analysis is crucial. Reserchers indending to use these tools should have a good idea of the normalization, distribution and hypothesis testing approach suitable for their data. This knowledge in addition to the experimental design should then inform the appropriate analysis packe to employ. This can be achieved  by doing a series of exploratory anaysis to analyze the  distribution of the data.
+Here, it was shown that the approached adopted by various differential expression analyses tool at each stage of the analysis is crucial. Most importantly, it was shown that count data from a pairwise experimental design with replicates following a binomial distribution (as is often seen of RNA-seq count data), analysis with DEsqeq2 provides optimal results. Researchers intending to use these tools should have a good idea of the normalization, distribution and hypothesis testing approach suitable for their data. This knowledge in addition to the experimental design should then inform the appropriate analysis package to employ. This can be achieved  by doing a series of exploratory analysis to analyze the  distribution of the data.
 
-We have shown that count data from a pairwise experimental design with replicates following a binomial distribution (as is often seen of RNA-seq count data)   
+  
  
 ## References

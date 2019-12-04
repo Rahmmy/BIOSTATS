@@ -87,7 +87,7 @@ Statstical concepts and tools that will be employed include;
 
 
 ## 8.3 Count data
-We begin with gene count data from an experiment on effect of RNAi knockdown of Pasilla (@brooks2011conservation), the Drosophila melanogaster ortholog of mammalian NOVA1 and NOVA2, on the transcriptome.
+We bigin with gene count data from an experiment on effect of RNAi knockdown of Pasilla (@brooks2011conservation), the Drosophila melanogaster ortholog of mammalian NOVA1 and NOVA2, on the transcriptome.
 ```{r}
 fn = system.file("extdata", "pasilla_gene_counts.tsv",
                   package = "pasilla", mustWork = TRUE)
@@ -484,7 +484,7 @@ gridExtra::grid.arrange(
 ```
 
 ## 8.10.3 Dealing with outliers
-Outliers are extremely large counts
+Outliers are extremly large counts
 They arise through;
 
 -rare technical or experimental artifacts
@@ -532,20 +532,21 @@ myMA("less",         -1   )
 ## Excercise
 
 ```{r}
-pasillaEdge1 <- DGEList(counts=counts, sample = pasillaSampleAnno[mt,], group=pasillaSampleAnno$condition)
-class(pasillaEdge1)
-design <- model.matrix(~ condition, pasillaEdge$samples)
-y <- calcNormFactors(pasillaEdge1, method="TMM")
-plotMDS(y)
-y1 <- estimateDisp(y, design,  robust=TRUE)
+Batch <- factor(c(1,2,2,1,1,2,2))
+condition = factor(pasillaSampleAnno$condition, levels = c("untreated", "treated"))
+design <- model.matrix(~ condition)
+dge <- DGEList(counts=counts)
+y <- calcNormFactors(dge)
+plotMDS(dge)
+y1 <- estimateDisp(y, design, robust=TRUE)
 y1$common.dispersion
 plotBCV(y1)
 
 #Generalized Linear Models with Quasi-likelihood Tests
 
-glmfit <- glmQLFit(y1,  robust=TRUE)
+glmfit <- glmQLFit(y1, design, robust=TRUE)
 plotQLDisp(glmfit)
-results <- glmQLFTest(glmfit, coef = 2)
+results <- glmQLFTest(glmfit)
 topTags(results)
 is.de <- decideTests(results, p.value=0.05)
 summary(is.de)
@@ -557,45 +558,13 @@ abline(h=c(-1, 1), col="blue")
 ##the glmLRT approach##
 #Conduct likelihood ratio tests for 1 vs 2 and show the top genes:
 #First fit genewise glms:
-fit1 <- glmFit(y1)
-lrt <- glmLRT(fit1, coef = 2)
+fit1 <- glmFit(y1, design)
+lrt <- glmLRT(fit1)
 topTags(lrt)
 plotMD(lrt)
 abline(h=c(-1, 1), col="blue")
 #The total number of differentially expressed genes at 5% FDR is given by:
 summary(decideTests(lrt))
-
-
-#Comparing the p-values of the two methods and the results from Deseq2
-
-
-trsf = function(x) ifelse(is.na(x), 0, (-log10(x)) ^ (1/6))
-ggplot(tibble(lrt1 = lrt$table$PValue,
-              p3 = results$table$PValue ),
-    aes(x = trsf(lrt1), y = trsf(p3))) +
-    geom_hex(bins = 75) + coord_fixed() +
-    xlab("likelihood ratio test") +
-    ylab("Quasi-likelihood") +
-    geom_abline(col = "orange")
-    
-   
-ggplot(tibble(pOne = res$pvalue,
-              lrt1 = lrt$table$PValue ),
-    aes(x = trsf(pOne), y = trsf(p3))) +
-    geom_hex(bins = 75) + coord_fixed() +
-    xlab("Deseq2") +
-    ylab("EdgeR_lrt") +
-    geom_abline(col = "orange")
-
-
-ggplot(tibble(pOne = res$pvalue,
-              p3 = results$table$PValue ),
-    aes(x = trsf(pOne), y = trsf(p3))) +
-    geom_hex(bins = 75) + coord_fixed() +
-    xlab("Deseq2") +
-    ylab("EdgeR_quasi") +
-    geom_abline(col = "orange")
-
 ```
 
 
