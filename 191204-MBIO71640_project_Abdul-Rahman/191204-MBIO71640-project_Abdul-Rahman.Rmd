@@ -528,9 +528,13 @@ Probability of being differentially expressed is estimated and a predefined odds
 
 This approach makes NOISeq robust maintaining a high true-positive rate. This pursuance of  high true-positive rate leads to high false negatives (@huang2015differential), thus leading to what was observed in this study. 
 
-## Conclusion
+## Conclusion and future directions
 
 Here, it was shown that the approached adopted by various differential expression analyses tool at each stage of the analysis is crucial. Most importantly, it was shown that count data from a pairwise experimental design with replicates following a binomial distribution (as is often seen of RNA-seq count data), analysis with DEsqeq2 provides optimal results. Researchers intending to use these tools should have a good idea of the normalization, distribution and hypothesis testing approach suitable for their data. This knowledge in addition to the experimental design should then inform the appropriate analysis package to employ. This can be achieved  by doing a series of exploratory analysis to analyze the  distribution of the data.
+
+
+Areas in differential gene expression analysis that requires further research include optimization of normalization strategies to deal with potential sources of bias such as the GC-content (@hansen2012removing; @risso2011gc), gene length bias and RNA composition. Future enhancement of these tools will depend on innovations in sequencing technologies.
+
 
   
  
